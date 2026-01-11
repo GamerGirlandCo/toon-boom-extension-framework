@@ -1,0 +1,6 @@
+CompileFlags:
+  BuiltinHeaders: QueryDriver
+  CompilationDatabase: .
+  Remove:
+  - 'external:I*'
+  - 'external:W*'
