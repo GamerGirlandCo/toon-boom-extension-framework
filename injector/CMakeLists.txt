@@ -22,6 +22,7 @@ list(FILTER INJECTOR_SOURCES EXCLUDE REGEX "/(out|build|cmake-build-|CMakeFiles)
 list(REMOVE_ITEM INJECTOR_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
 
 add_library(libtoonboom_injector STATIC ${INJECTOR_SOURCES} ${INJECTOR_HEADERS})
+target_compile_features(libtoonboom_injector PRIVATE cxx_std_20)
 target_compile_options(libtoonboom_injector PRIVATE "/EHsc")
 target_include_directories(libtoonboom_injector PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
