@@ -14,6 +14,7 @@
 #ifndef TOON_BOOM_LAYOUT_HPP
 #define TOON_BOOM_LAYOUT_HPP
 
+#include "./toolbar.hpp"
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
 #include <QtCore/QString>
@@ -46,9 +47,7 @@ class TULayoutDisplayTools;
 class TULayout;
 class AC_Manager;
 class AC_Menu;
-class AC_Toolbar;
 class AC_ActionInfo;
-class AC_ToolbarItemGenerator;
 class AC_Responder;
 class AC_ResponderTemplate;
 class TUWidgetLayoutView;
@@ -59,64 +58,43 @@ class UI_Splitter;
 class WID_VBoxLayout;
 class WID_HBoxLayout;
 
-/**
- * @brief Result code for action command handling
- */
-enum class AC_Result {
-  NotHandled = 0,
-  Handled = 1,
-  Error = 2
-};
-
 // =============================================================================
-// AC_Responder, AC_ResponderTemplate, AC_ResponderTemplateWidget
+// AC_Responder - Defined in ac_manager.hpp
 // =============================================================================
 //
-// These classes are implemented in Toon Boom DLLs (ToonBoomActionManager.dll
-// or similar). Since we don't have access to those libraries for linking,
-// we provide forward declarations only.
+// The AC_Responder interface and AC_ResponderBase convenience class are
+// defined in ac_manager.hpp. Include that header to create custom responders.
 //
-// For reference, the full interface is documented in RE/ToonBoomLayout_Classes.md
+// To create a custom responder:
+//   1. Inherit from AC_ResponderBase (provides default implementations)
+//   2. Override perform() to handle actions via Qt slots
+//   3. Register with AC_Manager::registerResponder()
+//
+// Example:
+//   class MyResponder : public QObject, public AC_ResponderBase {
+//       Q_OBJECT
+//   public:
+//       MyResponder(AC_Manager* mgr) : AC_ResponderBase("myResponder", mgr) {
+//           mgr->registerResponder(this, nullptr);
+//       }
+//   public slots:
+//       void onActionDoSomething() { /* handle action */ }
+//   };
+//
+// Toon Boom's internal classes (for reference only - cannot be extended):
+//   - AC_ResponderTemplate: Toon Boom's internal base class
+//   - AC_ResponderTemplateWidget<T>: Template combining QWidget with responder
 //
 // Key vtable addresses (in ToonBoomLayout.dll):
 //   - AC_Responder vtable: 0x18004cd28
 //   - AC_ResponderTemplate vtable: 0x18004cdc8
 //   - AC_ResponderTemplateWidget<QWidget> vtable: 0x18004ce68
-//
-// AC_Responder is a pure abstract interface with the following virtual methods:
-//   - perform(AC_ActionInfo*) -> AC_Result
-//   - performDownToChildren(AC_ActionInfo*) -> AC_Result
-//   - parentResponder() -> AC_Responder*
-//   - proxyResponder() -> AC_Responder*
-//   - acceptsFirstResponder() -> bool
-//   - acceptsSelectionResponder() -> bool
-//   - becomeFirstResponder() -> bool
-//   - becomeSelectionResponder() -> bool
-//   - resignFirstResponder() -> bool
-//   - handleShortcuts() const -> bool
-//   - shouldReceiveMessages() const -> bool
-//   - responderIdentity() const -> const QString&
-//   - responderDescription() const -> const QString&
-//   - setResponderDescription(const QString&) -> void
-//   - actionManager() const -> AC_Manager*
-//
-// AC_ResponderTemplate (sizeof 0x38):
-//   - Inherits AC_Responder
-//   - +0x08: QString m_identity
-//   - +0x20: QString m_description
-//   - +0x30: AC_Manager* m_manager
-//
-// AC_ResponderTemplateWidget<T> (sizeof ~0x68 for T=QWidget):
-//   - Inherits T (QWidget, QFrame, etc.) and AC_ResponderTemplate
-//   - Combines a Qt widget with action responder capabilities
 // =============================================================================
 
-// Forward declarations only - implemented in Toon Boom DLLs
-class AC_Responder;
+// Toon Boom internal classes - forward declarations only
+// These are implemented in Toon Boom DLLs and cannot be extended by users
 class AC_ResponderTemplate;
 
-// Template class - forward declaration for common instantiations
-// The actual template is implemented in Toon Boom DLLs
 template <typename T>
 class AC_ResponderTemplateWidget;
 
@@ -261,7 +239,31 @@ public:
   virtual void setMenu(AC_Manager *manager, const char *menuName, MenuType type);  // slot 8
   virtual void setMenu(AC_Menu *menu, MenuType type);               // slot 9
   virtual AC_Menu *menu(MenuType type);                             // slot 10
+  
+  /**
+   * @brief Returns the QDomElement defining this view's toolbar
+   * 
+   * Override this method to provide a view-specific toolbar. The default
+   * implementation returns an empty QDomElement (no toolbar).
+   * 
+   * To access the AC_Manager for toolbar lookup, use:
+   * @code
+   * QDomElement MyView::toolbar() {
+   *     AC_Manager* manager = TULayoutView_getActionManager(this);
+   *     if (manager) {
+   *         // manager->getToolbarElement() at vtable[52]
+   *         // Returns QDomElement for a named toolbar
+   *     }
+   *     return QDomElement();
+   * }
+   * @endcode
+   * 
+   * @return QDomElement defining toolbar, or empty element for no toolbar
+   * @see TULayoutView_getActionManager()
+   * @see docs/TULayoutView_Toolbar_Integration.md
+   */
   virtual QDomElement toolbar();                                    // slot 11
+  
   virtual void setToolbarInfo(const LAY_ToolbarInfo &info);         // slot 12
   virtual void connectView() {}                                     // slot 13 (empty impl)
   virtual void disconnectView() {}                                  // slot 14 (empty impl)
@@ -324,42 +326,94 @@ private:
 // TUWidgetLayoutView
 // =============================================================================
 //
-// TUWidgetLayoutView is implemented in ToonBoomLayout.dll. It inherits from
-// AC_ResponderTemplateWidget<QWidget> and embeds a TULayoutView at offset +0x68.
+// TUWidgetLayoutView is a concrete layout view class implemented in 
+// ToonBoomLayout.dll. It combines a QWidget (for UI display) with both
+// AC_Responder capabilities (for action handling) and TULayoutView
+// functionality (for the layout system).
 //
-// Since the base classes are implemented in Toon Boom DLLs, we cannot define
-// a compilable C++ class here. Use this as a reference for the memory layout
-// when working with TUWidgetLayoutView pointers obtained from the application.
+// INHERITANCE HIERARCHY:
+//   QWidget
+//       └── AC_ResponderTemplateWidget<QWidget>  (multiple inheritance)
+//               ├── QWidget base
+//               └── AC_ResponderTemplate (mixin at +0x28)
+//                       └── TUWidgetLayoutView
+//                               └── TULayoutView (embedded at +0x68)
 //
-// Memory layout (x64 MSVC):
-// - +0x00: vptr (QObject) - from AC_ResponderTemplateWidget<QWidget>
-// - +0x10: vptr (QPaintDevice)
-// - +0x18-0x27: QWidget members
-// - +0x28: vptr (AC_ResponderTemplateWidget)
-// - +0x30: AC_Manager* m_actionManager
-// - +0x38: QString m_responderIdentity
-// - +0x50: QString m_responderDescription
-// - +0x68: vptr (TULayoutView) - TULayoutView base starts here
-// - +0x70: QString m_internalName (from TULayoutView)
-// - +0x88: LAY_ToolbarInfo m_toolbarInfo (from TULayoutView)
-// - +0xF0: AC_Menu* m_menuByType[2] (from TULayoutView)
-// - +0x100: bool m_initializedFromCopy (from TULayoutView)
-// - +0x108: QString m_caption (from TULayoutView)
+// VTABLE STRUCTURE (4 vtables due to multiple inheritance):
+//   +0x00: vptr[0] - QObject vtable (includes QWidget virtuals)
+//   +0x10: vptr[1] - QPaintDevice vtable  
+//   +0x28: vptr[2] - AC_ResponderTemplateWidget<QWidget> / AC_Responder vtable
+//   +0x68: vptr[3] - TULayoutView vtable
 //
-// sizeof(TUWidgetLayoutView) ≈ 0x120 (288 bytes) on x64
+// MEMORY LAYOUT (x64 MSVC, sizeof = 0x120 / 288 bytes):
+//   +0x00: vptr (QObject)
+//   +0x08: QObjectData* d_ptr (QObject)
+//   +0x10: vptr (QPaintDevice)
+//   +0x18: [QWidget internal data ~16 bytes]
+//   +0x28: vptr (AC_ResponderTemplateWidget<QWidget>)
+//   +0x30: AC_Manager* m_actionManager
+//   +0x38: QString m_responderIdentity (24 bytes)
+//   +0x50: QString m_responderDescription (24 bytes)
+//   +0x68: vptr (TULayoutView) ─┐
+//   +0x70: QString m_internalName     │ TULayoutView
+//   +0x88: LAY_ToolbarInfo m_toolbarInfo   │ embedded
+//   +0xF0: AC_Menu* m_menuByType[2]   │ (184 bytes)
+//   +0x100: bool m_initializedFromCopy │
+//   +0x108: QString m_caption        ─┘
 //
-// Key methods (in ToonBoomLayout.dll):
-//   - Constructor at 0x1800300A0
-//   - Destructor at 0x180030480
-//   - getWidget() at 0x180030E90 - returns (this - 104) from TULayoutView*
+// KEY VIRTUAL METHOD OVERRIDES IN TUWIDGETLAYOUTVIEW:
+//   From TULayoutView:
+//     - widget() - pure virtual, not implemented (returns _purecall)
+//     - getWidget() const/non-const - returns (this - 104), i.e., the QWidget*
+//     - triggerMenuChanged() - emits menuChanged() signal on QWidget
+//     - isTULayoutView() - empty implementation (RTTI marker)
+//   From QWidget:
+//     - mousePressEvent() - accepts event and sets focus (Qt::MouseFocusReason)
+//     - metaObject(), qt_metacast(), qt_metacall() - Qt meta-object support
 //
-// To get TULayoutView* from TUWidgetLayoutView*:
-//   TULayoutView* layoutView = reinterpret_cast<TULayoutView*>(
-//       reinterpret_cast<char*>(widgetLayoutView) + 104);
+// SIGNALS (Qt):
+//   - menuChanged() - emitted by triggerMenuChanged()
 //
-// To get TUWidgetLayoutView* from TULayoutView*:
-//   TUWidgetLayoutView* widget = reinterpret_cast<TUWidgetLayoutView*>(
-//       reinterpret_cast<char*>(layoutView) - 104);
+// CONSTRUCTOR PARAMETERS:
+//   TUWidgetLayoutView(AC_Manager* manager, const QString& objectName,
+//                      QWidget* parent, const char* className,
+//                      Qt::WindowFlags flags)
+//
+// CONSTRUCTION SEQUENCE:
+//   1. AC_ResponderTemplateWidget<QWidget> ctor (parent, flags, objectName)
+//   2. TULayoutView default ctor (at this+104)
+//   3. Set all 4 vtables to TUWidgetLayoutView vtables
+//   4. QWidget::setMinimumWidth(150)
+//   5. If parent and manager: call initActionManager(manager)
+//      Else: store manager at +0x30
+//
+// DESTRUCTION SEQUENCE:
+//   1. Reset vtables
+//   2. Destroy TULayoutView::m_caption at +0x108
+//   3. Destroy TULayoutView::m_toolbarInfo at +0x88
+//   4. Destroy TULayoutView::m_internalName at +0x70
+//   5. Call AC_ResponderTemplateWidget<QWidget> dtor
+//
+// EXPORTED METHODS (ToonBoomLayout.dll):
+//   - ??0TUWidgetLayoutView@@QEAA@... - Constructor
+//   - ??1TUWidgetLayoutView@@UEAA@XZ - Destructor
+//   - ?getWidget@TUWidgetLayoutView@@UEAA/UEBAPEAVQWidget@@XZ - Get QWidget*
+//   - ?mousePressEvent@TUWidgetLayoutView@@MEAAXPEAVQMouseEvent@@@Z
+//   - ?triggerMenuChanged@TUWidgetLayoutView@@MEAAXXZ
+//   - ?menuChanged@TUWidgetLayoutView@@QEAAXXZ - Qt signal
+//   - ?metaObject/qt_metacast/qt_metacall - Qt meta-object methods
+//   - ?tr@TUWidgetLayoutView@@SA?AVQString@@PEBD0H@Z - Translation
+//
+// USAGE NOTES:
+//   Since TUWidgetLayoutView has external base classes, you cannot directly
+//   subclass it in user code. Instead:
+//   1. Obtain TUWidgetLayoutView* from the layout system
+//   2. Use helper functions to convert between pointer types
+//   3. Access TULayoutView virtuals through TULayoutView_getLayoutView()
+//   4. Access QWidget through TUWidgetLayoutView_getWidget()
+//
+// @see TULayoutView_getActionManager() for accessing AC_Manager*
+// @see docs/TUWidgetLayoutView_Analysis.md for detailed analysis
 // =============================================================================
 
 // Forward declaration - implemented in ToonBoomLayout.dll
@@ -391,6 +445,39 @@ inline TUWidgetLayoutView *TULayoutView_getWidgetLayoutView(TULayoutView *view) 
  */
 inline QWidget *TUWidgetLayoutView_getWidget(TUWidgetLayoutView *widget) {
   return reinterpret_cast<QWidget *>(widget);
+}
+
+/**
+ * @brief Get AC_Manager* from a TULayoutView* embedded in TUWidgetLayoutView
+ * 
+ * This function provides access to the AC_Manager instance for views that
+ * inherit from TUWidgetLayoutView. The AC_Manager is stored in the 
+ * AC_ResponderTemplateWidget<QWidget> base class at offset +48, which is
+ * offset -56 from the embedded TULayoutView*.
+ * 
+ * @note This only works for TULayoutView instances that are embedded in
+ *       TUWidgetLayoutView. Direct TULayoutView subclasses do NOT have
+ *       an AC_Manager member.
+ * 
+ * @param view Pointer to TULayoutView (must be embedded in TUWidgetLayoutView)
+ * @return AC_Manager* or nullptr if invalid
+ * 
+ * @code
+ * // Example usage in a toolbar() override:
+ * QDomElement MyView::toolbar() {
+ *     AC_Manager* manager = TULayoutView_getActionManager(this);
+ *     if (manager) {
+ *         // Use manager->getToolbarElement(...) to get toolbar definition
+ *     }
+ *     return QDomElement();
+ * }
+ * @endcode
+ */
+inline AC_Manager *TULayoutView_getActionManager(TULayoutView *view) {
+  // AC_Manager is at offset +48 in TUWidgetLayoutView
+  // TULayoutView is embedded at offset +104 in TUWidgetLayoutView
+  // So from TULayoutView*, AC_Manager** is at offset -56 (= 48 - 104)
+  return *reinterpret_cast<AC_Manager **>(reinterpret_cast<char *>(view) - 56);
 }
 
 /**
