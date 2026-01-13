@@ -1096,7 +1096,7 @@ protected:
      */
     void fireToolbarButtonClicked(const QString& identity);
 
-private slots:
+protected slots:
     /**
      * @brief Handle ignored widget destruction
      * @param object Destroyed object

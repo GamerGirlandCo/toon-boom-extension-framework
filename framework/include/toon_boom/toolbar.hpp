@@ -889,7 +889,7 @@ protected:
      */
     void createCustomizeButton();
 
-private slots:
+protected slots:
     /**
      * @brief Handle owner destruction
      */
