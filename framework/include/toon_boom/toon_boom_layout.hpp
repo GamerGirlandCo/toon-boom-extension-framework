@@ -23,16 +23,15 @@
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QMainWindow>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QToolButton>
-#include <QtWidgets/QMainWindow>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QtWidgets>
 #include <QtXml/QDomElement>
 #include <map>
 #include <vector>
-
 
 // Forward declarations
 class TULayoutView;
@@ -90,13 +89,6 @@ class WID_HBoxLayout;
 //   - AC_ResponderTemplate vtable: 0x18004cdc8
 //   - AC_ResponderTemplateWidget<QWidget> vtable: 0x18004ce68
 // =============================================================================
-
-// Toon Boom internal classes - forward declarations only
-// These are implemented in Toon Boom DLLs and cannot be extended by users
-class AC_ResponderTemplate;
-
-template <typename T>
-class AC_ResponderTemplateWidget;
 
 /**
  * @brief Toolbar configuration and state for a view
@@ -222,30 +214,31 @@ public:
   // Constructors - implemented in ToonBoomLayout.dll
   TULayoutView();
   TULayoutView(const TULayoutView &other);
-  virtual ~TULayoutView();  // slot 0
+  virtual ~TULayoutView(); // slot 0
 
   TULayoutView &operator=(const TULayoutView &other);
 
   // ===== PURE VIRTUAL METHODS (MUST override all 5) =====
-  virtual QWidget *widget() = 0;                    // slot 1
-  virtual TULayoutView *initiate(QWidget *parent);  // slot 2
-  virtual const QWidget *getWidget() const = 0;     // slot 3
-  virtual QWidget *getWidget() = 0;                 // slot 4
+  virtual QWidget *widget() = 0;                   // slot 1
+  virtual TULayoutView *initiate(QWidget *parent); // slot 2
+  virtual const QWidget *getWidget() const = 0;    // slot 3
+  virtual QWidget *getWidget() = 0;                // slot 4
 
   // ===== Virtual methods with default implementations =====
-  virtual const TULayoutViewHolder *getParentHolderWidget() const;  // slot 5
-  virtual TULayoutViewHolder *getParentHolderWidget();              // slot 6
-  virtual bool hasMenu();                                            // slot 7
-  virtual void setMenu(AC_Manager *manager, const char *menuName, MenuType type);  // slot 8
-  virtual void setMenu(AC_Menu *menu, MenuType type);               // slot 9
-  virtual AC_Menu *menu(MenuType type);                             // slot 10
-  
+  virtual const TULayoutViewHolder *getParentHolderWidget() const; // slot 5
+  virtual TULayoutViewHolder *getParentHolderWidget();             // slot 6
+  virtual bool hasMenu();                                          // slot 7
+  virtual void setMenu(AC_Manager *manager, const char *menuName,
+                       MenuType type);                // slot 8
+  virtual void setMenu(AC_Menu *menu, MenuType type); // slot 9
+  virtual AC_Menu *menu(MenuType type);               // slot 10
+
   /**
    * @brief Returns the QDomElement defining this view's toolbar
-   * 
+   *
    * Override this method to provide a view-specific toolbar. The default
    * implementation returns an empty QDomElement (no toolbar).
-   * 
+   *
    * To access the AC_Manager for toolbar lookup, use:
    * @code
    * QDomElement MyView::toolbar() {
@@ -257,33 +250,45 @@ public:
    *     return QDomElement();
    * }
    * @endcode
-   * 
+   *
    * @return QDomElement defining toolbar, or empty element for no toolbar
    * @see TULayoutView_getActionManager()
    * @see docs/TULayoutView_Toolbar_Integration.md
    */
-  virtual QDomElement toolbar();                                    // slot 11
-  
-  virtual void setToolbarInfo(const LAY_ToolbarInfo &info);         // slot 12
-  virtual void connectView() {}                                     // slot 13 (empty impl)
-  virtual void disconnectView() {}                                  // slot 14 (empty impl)
-  virtual bool initializedFromCopy();                               // slot 15
-  virtual QString getCaption(bool includeAdvanced) const;           // slot 16
-  virtual QString getDynamicTextForCaption() const;                 // slot 17
-  virtual bool wantEditionStack() const { return false; }           // slot 18 (returns false)
-  virtual QString displayName() const;                              // slot 19
-  virtual void compositeChanged(const QString &) {}                 // slot 20 (empty impl)
-  virtual void dropOverComposite(QDropEvent *, const QString &) {}  // slot 21 (empty)
-  virtual bool wantComposites() const { return false; }             // slot 22 (returns false)
-  virtual void initActionManager(AC_Manager *) {}                   // slot 23 (empty impl)
-  virtual bool wantDisplaySelector() const { return false; }        // slot 24 (returns false)
-  virtual bool isUsingDefaultDisplay() const { return false; }      // slot 25 (returns false)
-  virtual bool storeViewPreferences(QDomElement &) const { return false; }  // slot 26
-  virtual void loadViewPreferences(const QDomElement &) {}          // slot 27 (empty impl)
-  virtual QString cshHelpId();                                      // slot 28
+  virtual QDomElement toolbar(); // slot 11
+
+  virtual void setToolbarInfo(const LAY_ToolbarInfo &info); // slot 12
+  virtual void connectView() {}       // slot 13 (empty impl)
+  virtual void disconnectView() {}    // slot 14 (empty impl)
+  virtual bool initializedFromCopy(); // slot 15
+  virtual QString getCaption(bool includeAdvanced) const; // slot 16
+  virtual QString getDynamicTextForCaption() const;       // slot 17
+  virtual bool wantEditionStack() const {
+    return false;
+  } // slot 18 (returns false)
+  virtual QString displayName() const;              // slot 19
+  virtual void compositeChanged(const QString &) {} // slot 20 (empty impl)
+  virtual void dropOverComposite(QDropEvent *, const QString &) {
+  } // slot 21 (empty)
+  virtual bool wantComposites() const {
+    return false;
+  } // slot 22 (returns false)
+  virtual void initActionManager(AC_Manager *) {} // slot 23 (empty impl)
+  virtual bool wantDisplaySelector() const {
+    return false;
+  } // slot 24 (returns false)
+  virtual bool isUsingDefaultDisplay() const {
+    return false;
+  } // slot 25 (returns false)
+  virtual bool storeViewPreferences(QDomElement &) const {
+    return false;
+  } // slot 26
+  virtual void loadViewPreferences(const QDomElement &) {
+  } // slot 27 (empty impl)
+  virtual QString cshHelpId(); // slot 28
 
   // ===== MORE PURE VIRTUALS =====
-  virtual void triggerMenuChanged() = 0;                            // slot 29 - MUST override!
+  virtual void triggerMenuChanged() = 0; // slot 29 - MUST override!
 
   // Non-virtual methods
   void setCaption(const QString &caption);
@@ -294,8 +299,8 @@ public:
   static bool inClosingState();
 
 protected:
-  virtual void copy(const TULayoutView &other);                     // slot 30
-  virtual void isTULayoutView() = 0;                                // slot 31 - MUST override!
+  virtual void copy(const TULayoutView &other); // slot 30
+  virtual void isTULayoutView() = 0;            // slot 31 - MUST override!
 
 private:
   // Member layout (x64):
@@ -310,9 +315,9 @@ private:
   static int _uniqueId; // Static counter for unique names
 };
 
-// Note: AC_ResponderTemplateWidget<T> is a template class defined in Toon Boom DLLs
-// that combines a QWidget subclass with AC_Responder capabilities.
-// Memory layout for AC_ResponderTemplateWidget<QWidget>:
+// Note: AC_ResponderTemplateWidget<T> is a template class defined in Toon Boom
+// DLLs that combines a QWidget subclass with AC_Responder capabilities. Memory
+// layout for AC_ResponderTemplateWidget<QWidget>:
 // - +0x00: vptr (QObject)
 // - +0x10: vptr (QPaintDevice)
 // - +0x18-0x27: QWidget members
@@ -326,7 +331,7 @@ private:
 // TUWidgetLayoutView
 // =============================================================================
 //
-// TUWidgetLayoutView is a concrete layout view class implemented in 
+// TUWidgetLayoutView is a concrete layout view class implemented in
 // ToonBoomLayout.dll. It combines a QWidget (for UI display) with both
 // AC_Responder capabilities (for action handling) and TULayoutView
 // functionality (for the layout system).
@@ -341,7 +346,7 @@ private:
 //
 // VTABLE STRUCTURE (4 vtables due to multiple inheritance):
 //   +0x00: vptr[0] - QObject vtable (includes QWidget virtuals)
-//   +0x10: vptr[1] - QPaintDevice vtable  
+//   +0x10: vptr[1] - QPaintDevice vtable
 //   +0x28: vptr[2] - AC_ResponderTemplateWidget<QWidget> / AC_Responder vtable
 //   +0x68: vptr[3] - TULayoutView vtable
 //
@@ -425,8 +430,10 @@ class TUWidgetLayoutView;
  * @param widget Pointer to TUWidgetLayoutView
  * @return Pointer to embedded TULayoutView at offset +104
  */
-inline TULayoutView *TUWidgetLayoutView_getLayoutView(TUWidgetLayoutView *widget) {
-  return reinterpret_cast<TULayoutView *>(reinterpret_cast<char *>(widget) + 104);
+inline TULayoutView *
+TUWidgetLayoutView_getLayoutView(TUWidgetLayoutView *widget) {
+  return reinterpret_cast<TULayoutView *>(reinterpret_cast<char *>(widget) +
+                                          104);
 }
 
 /**
@@ -434,8 +441,10 @@ inline TULayoutView *TUWidgetLayoutView_getLayoutView(TUWidgetLayoutView *widget
  * @param view Pointer to TULayoutView (must be embedded in TUWidgetLayoutView)
  * @return Pointer to containing TUWidgetLayoutView at offset -104
  */
-inline TUWidgetLayoutView *TULayoutView_getWidgetLayoutView(TULayoutView *view) {
-  return reinterpret_cast<TUWidgetLayoutView *>(reinterpret_cast<char *>(view) - 104);
+inline TUWidgetLayoutView *
+TULayoutView_getWidgetLayoutView(TULayoutView *view) {
+  return reinterpret_cast<TUWidgetLayoutView *>(reinterpret_cast<char *>(view) -
+                                                104);
 }
 
 /**
@@ -449,19 +458,19 @@ inline QWidget *TUWidgetLayoutView_getWidget(TUWidgetLayoutView *widget) {
 
 /**
  * @brief Get AC_Manager* from a TULayoutView* embedded in TUWidgetLayoutView
- * 
+ *
  * This function provides access to the AC_Manager instance for views that
- * inherit from TUWidgetLayoutView. The AC_Manager is stored in the 
+ * inherit from TUWidgetLayoutView. The AC_Manager is stored in the
  * AC_ResponderTemplateWidget<QWidget> base class at offset +48, which is
  * offset -56 from the embedded TULayoutView*.
- * 
+ *
  * @note This only works for TULayoutView instances that are embedded in
  *       TUWidgetLayoutView. Direct TULayoutView subclasses do NOT have
  *       an AC_Manager member.
- * 
+ *
  * @param view Pointer to TULayoutView (must be embedded in TUWidgetLayoutView)
  * @return AC_Manager* or nullptr if invalid
- * 
+ *
  * @code
  * // Example usage in a toolbar() override:
  * QDomElement MyView::toolbar() {
@@ -654,6 +663,7 @@ public slots:
   virtual void enterEvent(QEnterEvent *event) override;
   virtual bool eventFilter(QObject *watched, QEvent *event) override;
   virtual void mousePressEvent(QMouseEvent *event) override;
+
 protected:
   // Qt event overrides
   virtual void closeEvent(QCloseEvent *event) override;
@@ -800,24 +810,24 @@ protected:
   void selectDefaultLayout();
   void setUniqueLayout(QString &name);
   static void setUniqueLayout(const QList<QString> &existing, QString &name);
-  void addToolbarConfig(
-      std::map<QString, ToolbarButtonConfig> &configMap, const QString &name,
-      const QList<QString> &config, bool isDefault);
+  void addToolbarConfig(std::map<QString, ToolbarButtonConfig> &configMap,
+                        const QString &name, const QList<QString> &config,
+                        bool isDefault);
   void clearToolbarConfig(std::map<QString, ToolbarButtonConfig> &configMap,
                           bool defaultOnly);
 
 private:
   // Member layout (x64):
   // vptr at +0x00
-  TULayout *m_currentLayout;              // +0x08
-  TULayout *m_previousLayout;             // +0x10
-  std::vector<TULayout *> m_layouts;      // +0x18 (24 bytes)
+  TULayout *m_currentLayout;                // +0x08
+  TULayout *m_previousLayout;               // +0x10
+  std::vector<TULayout *> m_layouts;        // +0x18 (24 bytes)
   std::vector<TULayout *> m_toolbarLayouts; // +0x30 (24 bytes)
-  QString m_layoutPath;                   // +0x50 (24 bytes)
+  QString m_layoutPath;                     // +0x50 (24 bytes)
   std::map<QString, ToolbarButtonConfig> *m_globalToolbarConfig; // +0x68
-  void *_reserved;                        // +0x70
-  std::map<QString, ToolbarButtonConfig> *m_viewToolbarConfig; // +0x78
-  int m_flags;                            // +0x80
+  void *_reserved;                                               // +0x70
+  std::map<QString, ToolbarButtonConfig> *m_viewToolbarConfig;   // +0x78
+  int m_flags;                                                   // +0x80
 };
 
 /**
@@ -885,21 +895,21 @@ public:
 private:
   // Member layout (x64):
   // QObject members at +0x00 to +0x0F
-  QFrame *m_mainFrame;                        // +0x10
-  WID_VBoxLayout *m_mainLayout;               // +0x18
-  char _reserved[0x48];                       // +0x20-0x5F (padding)
+  QFrame *m_mainFrame;                         // +0x10
+  WID_VBoxLayout *m_mainLayout;                // +0x18
+  char _reserved[0x48];                        // +0x20-0x5F (padding)
   std::vector<TULayoutSplitter *> m_splitters; // +0x60
-  std::vector<TULayoutFrame *> m_frames;      // +0x78
-  std::vector<TULayoutArea *> m_areas;        // +0x90
-  std::vector<TULayoutArea *> m_pluginAreas;  // +0xA8
-  QPoint m_savedPos;                          // +0xC0
-  QSize m_savedSize;                          // +0xC8
-  int m_stateFlags;                           // +0xD0
-  int _padding;                               // +0xD4
-  TULayoutFrame *m_currentLayoutFrame;        // +0xD8
-  char _reserved2[0x10];                      // +0xE0-0xEF (padding)
-  TULayoutManager *m_owner;                   // +0xF0
-  AC_Manager *m_actionManager;                // +0xF8
+  std::vector<TULayoutFrame *> m_frames;       // +0x78
+  std::vector<TULayoutArea *> m_areas;         // +0x90
+  std::vector<TULayoutArea *> m_pluginAreas;   // +0xA8
+  QPoint m_savedPos;                           // +0xC0
+  QSize m_savedSize;                           // +0xC8
+  int m_stateFlags;                            // +0xD0
+  int _padding;                                // +0xD4
+  TULayoutFrame *m_currentLayoutFrame;         // +0xD8
+  char _reserved2[0x10];                       // +0xE0-0xEF (padding)
+  TULayoutManager *m_owner;                    // +0xF0
+  AC_Manager *m_actionManager;                 // +0xF8
 };
 
 /**
@@ -941,11 +951,13 @@ public:
 
   // Area management
   bool addArea(const char *type, const QString &name, TULayoutView *view,
-               bool visible, bool createFrame, bool docked, const QSize &minSize,
-               bool useMinSize, bool isPlugin, bool defaultVisible, bool unknown);
+               bool visible, bool createFrame, bool docked,
+               const QSize &minSize, bool useMinSize, bool isPlugin,
+               bool defaultVisible, bool unknown);
   bool addPluginArea(const char *type, const QString &name, TULayoutView *view,
                      bool visible, bool createFrame, bool docked,
-                     const QSize &minSize, bool useMinSize, bool defaultVisible);
+                     const QSize &minSize, bool useMinSize,
+                     bool defaultVisible);
   void delAreas(TULayoutFrame *frame = nullptr);
   TULayoutArea *findArea(const QString &name);
   TULayoutArea *findArea(QWidget *widget);
@@ -968,13 +980,15 @@ public:
                double ratio, Qt::Orientation orientation, TULayoutView *&view,
                TULayoutFrame *&newFrame, bool visible, double splitRatio);
   bool addViewHorizontal(const char *type, const QString &name,
-                         TULayoutFrame *frame, double ratio, TULayoutView *&view,
-                         TULayoutFrame *&newFrame, bool visible, double splitRatio);
+                         TULayoutFrame *frame, double ratio,
+                         TULayoutView *&view, TULayoutFrame *&newFrame,
+                         bool visible, double splitRatio);
   bool addViewVertical(const char *type, const QString &name,
                        TULayoutFrame *frame, double ratio, TULayoutView *&view,
-                       TULayoutFrame *&newFrame, bool visible, double splitRatio);
-  bool addDetached(const QString &name, const QString &type, TULayoutView *&view,
-                   TULayoutFrame *&frame);
+                       TULayoutFrame *&newFrame, bool visible,
+                       double splitRatio);
+  bool addDetached(const QString &name, const QString &type,
+                   TULayoutView *&view, TULayoutFrame *&frame);
   void deleteAllViews();
   TULayoutView *findInstance(const QString &name);
   TULayoutView *findInstance(const QWidget *widget);
@@ -1022,7 +1036,8 @@ public:
   void registerGlobalToolbar(const QToolBar *toolbar);
   void clearGlobalToolBarList();
   void getAllToolbars(std::list<QToolBar *> &viewToolbars,
-                      std::list<QToolBar *> &globalToolbars, bool includeHidden);
+                      std::list<QToolBar *> &globalToolbars,
+                      bool includeHidden);
   bool isGlobalToolbar(const QString &name) const;
   bool isGlobalToolbar(const QToolBar *toolbar) const;
   virtual bool getMainToolbarDefaultVisibility(const QToolBar &toolbar) const;
@@ -1112,7 +1127,8 @@ protected:
 private:
   void sortToolbarList(QList<QToolBar *> list,
                        std::list<QToolBar *> &viewToolbars,
-                       std::list<QToolBar *> &globalToolbars, bool includeHidden);
+                       std::list<QToolBar *> &globalToolbars,
+                       bool includeHidden);
   QToolBar *getToolbarUnderMouse();
   void moveGlobalToolbar();
   void toolbarWasCustomized(QString name);
@@ -1124,9 +1140,9 @@ private:
   // TULayoutStorage members at +0x28 to +0xAF
   // PLUG_ToolbarService at +0xB0
   // PLUG_MenuService at +0xB8
-  bool m_unknown;                          // +0xC0
-  char _padding[7];                        // +0xC1-0xC7
-  TULayoutManager_Private *m_private;      // +0xC8
+  bool m_unknown;                     // +0xC0
+  char _padding[7];                   // +0xC1-0xC7
+  TULayoutManager_Private *m_private; // +0xC8
 };
 
 #endif // TOON_BOOM_LAYOUT_HPP
