@@ -3,7 +3,6 @@
 #include <iostream>
 #include <vector>
 
-
 argparse::ArgumentParser *&createProgram(int argc, char *argv[]) {
   static auto program = new argparse::ArgumentParser("tb-injector-cli.exe");
   program->set_prefix_chars("-/");
@@ -30,7 +29,7 @@ argparse::ArgumentParser *&createProgram(int argc, char *argv[]) {
 void copyDll(const std::string &dllPath,
              const std::filesystem::directory_entry &entry, bool isDebug,
              bool isDep) {
-	auto absPath = std::filesystem::absolute(dllPath);
+  auto absPath = std::filesystem::absolute(dllPath);
   if (!std::filesystem::exists(absPath)) {
     std::cerr << "[warning] dll path " << absPath << " does not exist"
               << std::endl;
@@ -69,6 +68,9 @@ int main(int argc, char *argv[]) {
 
   if (args->get<std::string>("-v") != "") {
     logFile = args->get<std::string>("-v");
+    if(logFile != "-") {
+      logFile = std::filesystem::absolute(logFile).string();
+    }
     std::cout << "Logging to " << (logFile == "-" ? "console" : logFile)
               << std::endl;
   }
@@ -115,18 +117,37 @@ int main(int argc, char *argv[]) {
   for (auto dllPath : dllDeps) {
     copyDll(dllPath, entry, isDebug, true);
   }
+
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
   ZeroMemory(&si, sizeof(si));
   ZeroMemory(&pi, sizeof(pi));
   SECURITY_ATTRIBUTES sattr;
   ZeroMemory(&sattr, sizeof(sattr));
-  sattr.bInheritHandle = FALSE;
+  sattr.lpSecurityDescriptor = 0;
+  sattr.nLength = sizeof(sattr);
+  sattr.bInheritHandle = TRUE;
   si.cb = sizeof(si);
-  if (!CreateProcess(NULL, entry.path().string().data(), &sattr, NULL, FALSE,
-                       CREATE_SUSPENDED | CREATE_NO_WINDOW, NULL,
-                      entry.path().parent_path().string().data(), &si, &pi)) {
+  si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+  HANDLE outHandle =
+      logFile == "-"
+          ? GetStdHandle(STD_OUTPUT_HANDLE)
+          : CreateFile(logFile.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+                        &sattr, OPEN_ALWAYS | TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (outHandle == INVALID_HANDLE_VALUE) {
+    std::cerr << "Failed to create output handle" << std::endl;
+    std::cerr << "Error: " << GetLastError() << std::endl;
+    return 1;
+  }
+  si.hStdOutput = outHandle;
+  si.hStdError = outHandle;
+  si.hStdInput = NULL;
+
+  if (!CreateProcess(NULL, entry.path().string().data(), &sattr, NULL, TRUE,
+                     CREATE_SUSPENDED, NULL,
+                     entry.path().parent_path().string().data(), &si, &pi)) {
     std::cerr << "Failed to create process" << std::endl;
+    CloseHandle(outHandle);
     return 1;
   }
   std::cout << "Target process ID: " << pi.dwProcessId << std::endl;
@@ -135,7 +156,9 @@ int main(int argc, char *argv[]) {
   HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
   FARPROC hLoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
   for (auto dllPath : dllPaths) {
-		auto realPath = (std::filesystem::path(program).parent_path().string() + "/" + std::filesystem::absolute(dllPath).filename().string());
+    auto realPath =
+        (std::filesystem::path(program).parent_path().string() + "/" +
+         std::filesystem::absolute(dllPath).filename().string());
 
     LPVOID remoteBuffer =
         VirtualAllocEx(hProcess, NULL, dllPath.size() + 1,
@@ -148,6 +171,7 @@ int main(int argc, char *argv[]) {
                             realPath.size() + 1, NULL)) {
       std::cerr << "Failed to write process memory" << std::endl;
       CloseHandle(hProcess);
+      CloseHandle(outHandle);
       return 1;
     }
     DWORD remoteTID;
@@ -158,15 +182,16 @@ int main(int argc, char *argv[]) {
       std::cerr << "Failed to create remote thread" << std::endl;
       VirtualFreeEx(hProcess, remoteBuffer, 0, MEM_RELEASE);
       CloseHandle(hProcess);
+      CloseHandle(outHandle);
       return 1;
     }
-      std::cout << "Remote thread ID: " << remoteTID << std::endl;
+    std::cout << "Remote thread ID: " << remoteTID << std::endl;
     WaitForSingleObject(hThread, INFINITE);
-		DWORD exitCode;
-		GetExitCodeThread(hThread, &exitCode);
-		std::cout << "Exit code: " << exitCode << std::endl;
+    DWORD exitCode;
+    GetExitCodeThread(hThread, &exitCode);
+    std::cout << "Exit code: " << exitCode << std::endl;
     CloseHandle(hThread);
-		VirtualFreeEx(hProcess, remoteBuffer, 0, MEM_RELEASE);
+    VirtualFreeEx(hProcess, remoteBuffer, 0, MEM_RELEASE);
   }
   ResumeThread(pi.hThread);
   CloseHandle(hProcess);
