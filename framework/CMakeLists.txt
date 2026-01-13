@@ -11,8 +11,8 @@ file(GLOB_RECURSE FRAMEWORK_HOOK_SOURCES CONFIGURE_DEPENDS
 	"${CMAKE_CURRENT_SOURCE_DIR}/hook/*.cpp"
 )
 file(GLOB_RECURSE FRAMEWORK_HEADERS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
 )
 list(FILTER FRAMEWORK_SOURCES EXCLUDE REGEX "/(out|build|cmake-build-|CMakeFiles)/")
 
@@ -30,6 +30,7 @@ function(link_libs_and_set_properties target_name)
 	target_include_directories(${target_name} PUBLIC "${QT6_ROOT_DIR}/include/QtGui")
 
 	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/toon_boom")
+	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/framework")
 	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/hooks")
 	target_include_directories(${target_name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/internal")
 
@@ -38,6 +39,7 @@ function(link_libs_and_set_properties target_name)
   target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Gui.lib")
   target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Widgets.lib")
   target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Core5Compat.lib")
+  target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Xml.lib")
 	target_compile_options(${target_name} PUBLIC "/EHsc")
 	target_link_libraries(${target_name} PUBLIC minhook::minhook)
   set_target_properties(${target_name} PROPERTIES
