@@ -254,7 +254,8 @@ public slots:
     void onActionMyCustomActionValidate(AC_ActionInfo* info) {
         // Enable based on some condition
         info->setEnabled(canPerformAction());
-        info->setChecked(isActionActive());
+        // Checkable state is controlled by an additional (currently-opaque) vfunc
+        // on the `AC_ActionInfo*` implementation, not by a public `setChecked(...)` API.
     }
     
 private:
@@ -287,6 +288,24 @@ public:
         if (AC_Manager* mgr = actionManager()) {
             mgr->unregisterResponder(this);
         }
+    }
+
+    AC_Result perform(AC_ActionInfo* info) override {
+        if (!info) {
+            return AC_Result::NotHandled;
+        }
+
+        // IDA-verified: internal widget responders call `info->invokeOnQObject(widget)`.
+        // This uses Qt's metaobject (`QMetaObject::indexOfSlot`), so your class must
+        // have `Q_OBJECT` (and be built with moc/automoc) for the slots to be found.
+        // If it returns NotHandled, they propagate to parentResponder().
+        AC_Result result = info->invokeOnQObject(this);
+        if (result == AC_Result::NotHandled) {
+            if (AC_Responder* parent = parentResponder()) {
+                return parent->perform(info);
+            }
+        }
+        return result;
     }
 
 public slots:
@@ -332,9 +351,10 @@ public:
     bool resignSelectionResponder() override { return false; }
     
     AC_Result perform(AC_ActionInfo* info) override {
-        // Use Qt meta-object to invoke the slot by name
-        // AC_ActionInfo contains slot name and parameters
-        return AC_Result::NotHandled;
+        if (!info) {
+            return AC_Result::NotHandled;
+        }
+        return info->invokeOnQObject(this);
     }
     
     AC_Result performDownToChildren(AC_ActionInfo* info) override {
@@ -362,24 +382,29 @@ private:
 
 ## AC_ActionInfo Structure
 
-When an action is triggered, an `AC_ActionInfo` object is created:
+When an action is triggered or validated, Toon Boom passes an `AC_ActionInfo*` to responders.
+
+**Important ABI correction (IDA-verified):** `AC_ActionInfo` is **not** a `QObject`. RTTI in `ToonBoomActionManager.dll` shows:
+
+- `AC_ActionInfoImpl` derives from `AC_ActionInfo`
+- `AC_ActionInfo` derives from `AC_ActionData`
+
+So, “action info” methods like `setEnabled(bool)` are actually exported as `AC_ActionData::setEnabled(bool)` and are inherited by `AC_ActionInfo`.
+
+**Important return-value detail (IDA-verified):** action invocation/validation helpers return:
+- `0` = handled/success
+- `1` = not handled / slot not found
 
 ```cpp
-class AC_ActionInfo : public QObject {
-    // Key methods
-    const QString& slot() const;      // Slot signature to invoke
-    const QString& text() const;      // Action display text
-    QVariant itemParameter() const;   // Extra parameter from XML
-    
-    // State methods
-    bool isEnabled() const;
-    void setEnabled(bool enabled);
-    bool isChecked() const;
-    void setChecked(bool checked);
-    
-    // Responder info
-    AC_Responder* responder() const;
-    void setResponder(AC_Responder* resp);
+class AC_ActionData {
+public:
+  bool isValidation() const;
+  void setEnabled(bool enabled);
+  void setVisible(bool visible);
+};
+
+class AC_ActionInfo : public AC_ActionData {
+  // Most fields/methods are opaque; Toon Boom provides concrete impls.
 };
 ```
 
@@ -387,19 +412,24 @@ class AC_ActionInfo : public QObject {
 
 Before displaying a menu or when the UI updates, Toon Boom calls validation methods:
 
-1. For each toolbar item, look for a slot named `<slotName>Validate(AC_ActionInfo*)`
-2. If found, invoke it to update enabled/checked state
-3. Display the item according to the updated state
+1. For each toolbar item, Toon Boom tries to validate via a derived validate slot name (`<slotName>Validate`).
+2. If the validate slot exists, it is invoked and is expected to update state (typically via `info->setEnabled(...)`, and optionally a checked/visible-like vfunc).
+3. If the validate slot does not exist, Toon Boom can fall back to enabling the action if the action slot exists.
+4. If neither validate nor action slot exists on the resolved responder, the action is disabled.
 
 Example from `TULayoutManager`:
 
 ```cpp
 // Address: 0x7ffa0be52e60
 void TULayoutManager::onActionFullscreenValidate(AC_ActionInfo* info) {
-    info->setVisible(true);  // vtable[7]
-    info->setEnabled(true);  // AC_ActionData::setEnabled
+    // 1) Calls AC_ActionInfo vfunc @ +0x38 with a byte flag from `this+0xC0`
+    //    (used to update a check/visible-like state on the action).
+    // 2) Always enables the action:
+    info->setEnabled(true); // AC_ActionData::setEnabled
 }
 ```
+
+See also: `docs/AC_Toolbar_ButtonEnablement.md:1`
 
 ## Registration with AC_Manager
 

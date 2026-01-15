@@ -195,6 +195,16 @@ When you call `TULayoutManager::addArea`, the following happens:
 
 This is why `widget()` must return `this` - the calling code treats the return as `TULayoutView*` to make further virtual calls.
 
+## View Toolbars
+
+Some built-in views display a view-specific toolbar when they are the active tab (e.g., Drawing and Reference View).
+
+This is driven by:
+- `TULayoutView::toolbar()` returning a non-null `QDomElement` for the toolbar definition
+- `TULayoutView::m_toolbarInfo` (`LAY_ToolbarInfo`) being non-default so the frame actually shows/updates the toolbar
+
+Details and concrete implementations are documented in `docs/TULayoutView_Toolbar_Integration.md`.
+
 ## Opening Views at Runtime
 
 To programmatically show a view that's already registered:
