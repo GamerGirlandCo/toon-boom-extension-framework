@@ -20,36 +20,38 @@ concept isQWidget = std::is_base_of<QWidget, T>::value;
  */
 template <isQWidget T> class TUWidgetLayoutViewBase : public TULayoutView {
 public:
-  TUWidgetLayoutViewBase() { m_widget = nullptr; };
-  TUWidgetLayoutViewBase(T *widget) { m_widget = widget; };
-  virtual ~TUWidgetLayoutViewBase() {
+  TUWidgetLayoutViewBase() {
+    m_widget = nullptr;
+    m_parentConnected = nullptr;
   };
+  TUWidgetLayoutViewBase(T *widget) {
+    m_widget = widget;
+    m_parentConnected = nullptr;
+  };
+  virtual ~TUWidgetLayoutViewBase() {};
   virtual void triggerMenuChanged() override {}
   QWidget *widget() override {
     return reinterpret_cast<QWidget *>(static_cast<TULayoutView *>(this));
   }
   const QWidget *getWidget() const override {
+    const_cast<TUWidgetLayoutViewBase *>(this)->ensureWidget();
+    const_cast<TUWidgetLayoutViewBase *>(this)->connectToParentIfNeeded();
     return m_widget;
   }
   QWidget *getWidget() override {
     ensureWidget();
+    connectToParentIfNeeded();
     return m_widget;
   }
+  // Note: initiate() is NOT called by Toon Boom! The actual parenting
+  // is done externally via getWidget() + setParent(). We keep this for
+  // API compatibility but the real work is done in connectToParentIfNeeded().
   TULayoutView *initiate(QWidget *parent) override {
     ensureWidget();
     if (parent && m_widget) {
       m_widget->setParent(parent);
+      connectToParent(parent);
     }
-    QObject::connect(
-        parent, &QObject::destroyed, m_widget,
-        [this]() {
-          if (m_widget) {
-            m_widget->setParent(nullptr); // Prevent Qt from deleting us
-          }
-        },
-        Qt::DirectConnection); // DirectConnection ensures this runs BEFORE
-                               // deletion
-
     return this;
   }
 
@@ -58,6 +60,7 @@ public:
 
 protected:
   QPointer<T> m_widget;
+  QWidget *m_parentConnected; // Track which parent we've connected to
   void ensureWidget() {
     if (!m_widget) {
       m_widget = createWidget();
@@ -65,9 +68,34 @@ protected:
       m_widget->setAttribute(Qt::WA_QuitOnClose, false);
     }
   }
-  void isTULayoutView() override {}
-  void disconnectView() override {
-    
+  // Connect to the widget's current parent to unparent before deletion
+  // This prevents cross-DLL heap corruption when Qt tries to delete our widget
+  void connectToParentIfNeeded() {
+    if (!m_widget)
+      return;
+    QWidget *parent = m_widget->parentWidget();
+    if (parent && parent != m_parentConnected) {
+      connectToParent(parent);
+    }
+  }
+
+  void connectToParent(QWidget *parent) {
+    if (!parent || !m_widget)
+      return;
+    m_parentConnected = parent;
+    QObject::connect(
+        parent, &QObject::destroyed, m_widget.data(),
+        [this]() {
+          std::cout << "[parent destroyed] Unparenting widget to prevent "
+                       "cross-DLL heap deletion"
+                    << std::endl;
+          if (m_widget) {
+            m_widget->setParent(nullptr);
+          }
+          m_parentConnected = nullptr;
+          onParentDisconnect();
+        },
+        Qt::DirectConnection);
   }
   virtual T *createWidget() = 0;
 };
