@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <QtCore/qtmetamacros.h>
+#include <QtCore/QList>
 #include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtCore/QList>
