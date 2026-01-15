@@ -111,5 +111,39 @@ protected:
         },
         Qt::DirectConnection);
   }
+  /**
+   * @brief convenience method to register a toolbar from an xml element
+   */
+  bool registerToolbar(const QDomElement &element, const QString &name) {
+    auto am = PLUG_Services::getActionManager();
+    QDomElement docEl = element;
+    if (docEl.tagName() == "toolbars") {
+      docEl = docEl.firstChildElement();
+    }
+    if (am) {
+      QList<QString> ids;
+      am->loadToolbars(element, ids);
+      std::cout << "Registered toolbar with AC_Manager. IDs loaded: "
+                << ids.size() << std::endl;
+      for (const auto &id : ids) {
+        std::cout << "  - " << id.toStdString() << std::endl;
+      }
+    } else {
+      std::cerr << "Could not get AC_Manager!" << std::endl;
+      return false;
+    }
+    auto layToolbarInfo = getToolbarInfo();
+    QList<QString> btns;
+    for (int i = 0; i < docEl.childNodes().size(); i++) {
+      auto node = docEl.childNodes().at(i).toElement();
+      btns.append(node.attribute("id"));
+    }
+    layToolbarInfo.setName(name);
+    layToolbarInfo.setButtonConfig(&btns);
+    layToolbarInfo.setButtonDefaultConfig(&btns);
+    setToolbarInfo(layToolbarInfo);
+    return true;
+  }
+
   virtual T *createWidget() = 0;
 };
