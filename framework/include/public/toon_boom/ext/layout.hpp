@@ -57,6 +57,17 @@ public:
 
   void isTULayoutView() override {}
   void disconnectView() override {}
+  TULayoutFrame *getOwnerFrame() {
+    auto lm = PLUG_Services::getLayoutManager();
+    if (!lm) {
+      return nullptr;
+    }
+    auto frame = lm->findFrame(this);
+    if (!frame) {
+      return nullptr;
+    }
+    return frame;
+  }
 
 protected:
   QPointer<T> m_widget;
