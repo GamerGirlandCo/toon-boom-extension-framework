@@ -23,15 +23,15 @@
 #include <QtCore/QList>
 #include <QtCore/QObject>
 #include <QtCore/QString>
-#include <QtCore/QList>
 #include <QtCore/QVariant>
 #include <QtGui/QIcon>
 #include <QtGui/QKeySequence>
-#include <QtWidgets/QWidget>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenuBar>
+#include <QtWidgets/QWidget>
 #include <QtXml/QDomElement>
 #include <vector>
+
 
 // Forward declarations
 class AC_Manager;
@@ -42,6 +42,7 @@ class AC_Toolbar;
 class AC_ToolbarImpl;
 class AC_ToolbarItemGenerator;
 class AC_ShortcutManager;
+class AC_ActionData;
 class AC_ActionInfo;
 class AC_Object;
 class AC_Item;
@@ -55,49 +56,73 @@ class AC_ToolbarMultiButton;
  * Used as return value from perform(), trigger(), and validation methods.
  */
 enum class AC_Result : int {
-    NotHandled = 0,  ///< Action was not handled by any responder
-    Handled = 1,     ///< Action was successfully handled
-    Error = 2        ///< An error occurred during handling
+  Handled = 0,    ///< Action was successfully handled
+  NotHandled = 1, ///< Action was not handled by any responder
+  Error = 2       ///< An error occurred during handling
 };
 
 /**
  * @brief Manager options for AC_Manager configuration
  */
 enum class AC_ManagerOption : int {
-    TrimShortcuts = 0  ///< Whether to trim whitespace from shortcut strings
-    // Additional options may exist
+  TrimShortcuts = 0 ///< Whether to trim whitespace from shortcut strings
+                    // Additional options may exist
 };
 
 /**
- * @brief Action information passed to responders
+ * @brief Action-state payload passed to responders during trigger/validation
  *
- * Contains information about the action being performed, including
- * the slot name, parameters, and enabled/checked state.
- * 
- * This is an opaque class - the actual implementation is in Toon Boom DLLs.
- * The interface is provided for type safety in method signatures.
+ * In Toon Boom's binaries, responder slots typically accept an `AC_ActionInfo*`
+ * (e.g. `onActionFooValidate(AC_ActionInfo*)`). RTTI in
+ * `ToonBoomActionManager.dll` shows the concrete objects passed are
+ * implementations of `AC_ActionInfoImpl` / `AC_ActionValidateImpl`, and that
+ * `AC_ActionInfo` inherits from `AC_ActionData` (single inheritance, offset 0).
+ *
+ * This framework only declares the exported, non-virtual methods that are safe
+ * to call from plugins. Do not instantiate these types (size/layout is opaque).
  */
-class AC_ActionInfo : public QObject {
-    Q_OBJECT
+class AC_ActionData {
 public:
-    virtual ~AC_ActionInfo() = default;
-    
-    // State accessors - implemented in Toon Boom DLLs
-    virtual bool isEnabled() const = 0;
-    virtual void setEnabled(bool enabled) = 0;
-    virtual bool isChecked() const = 0;
-    virtual void setChecked(bool checked) = 0;
-    virtual bool isVisible() const = 0;
-    virtual void setVisible(bool visible) = 0;
-    
-    // Action info
-    virtual const QString& slot() const = 0;
-    virtual const QString& text() const = 0;
-    virtual QVariant itemParameter() const = 0;
-    
-    // Responder
-    virtual AC_Responder* responder() const = 0;
-    virtual void setResponder(AC_Responder* responder) = 0;
+  AC_ActionData() = delete;
+  AC_ActionData(const AC_ActionData &) = delete;
+  AC_ActionData &operator=(const AC_ActionData &) = delete;
+
+  // Polymorphic base (vtable) in ToonBoomActionManager.dll.
+  // Vtable for `AC_ActionData` has 10 entries: dtor + 9 pure virtuals.
+  virtual ~AC_ActionData() = 0;
+  virtual void _reserved1() = 0;
+  virtual void _reserved2() = 0;
+  virtual void _reserved3() = 0;
+  virtual void _reserved4() = 0;
+  virtual void _reserved5() = 0;
+  virtual void _reserved6() = 0;
+  virtual void _reserved7() = 0;
+  virtual void _reserved8() = 0;
+  virtual void _reserved9() = 0;
+
+  // Exported from ToonBoomActionManager.dll (non-virtual).
+  bool isValidation() const;
+  void setEnabled(bool enabled);
+  void setVisible(bool visible);
+};
+
+inline AC_ActionData::~AC_ActionData() = default;
+
+/**
+ * @brief Public type used in Qt slot signatures (`AC_ActionInfo*`)
+ *
+ * This type exists to match Toon Boom's Qt metaobject signatures. The runtime
+ * objects passed are `AC_ActionInfoImpl`/`AC_ActionValidateImpl` instances.
+ */
+class AC_ActionInfo : public AC_ActionData {
+public:
+  // IDA-verified: `AC_ActionInfoImpl_invokeOnQObject` is vtable slot 10
+  // (offset +0x50), returns 0 on success and 1 when the slot signature is
+  // missing or not found on the target QObject.
+  virtual AC_Result invokeOnQObject(QObject *target) = 0;
+
+protected:
+  ~AC_ActionInfo() override = default;
 };
 
 /**
@@ -117,21 +142,23 @@ public:
  * class MyResponder : public QObject, public AC_Responder {
  *     Q_OBJECT
  * public:
- *     MyResponder(const QString& id, AC_Manager* mgr) 
+ *     MyResponder(const QString& id, AC_Manager* mgr)
  *         : m_identity(id), m_manager(mgr) {
  *         mgr->registerResponder(this, nullptr);
  *     }
- *     
+ *
  *     // Implement AC_Responder interface...
  *     const QString& responderIdentity() const override { return m_identity; }
  *     AC_Manager* actionManager() const override { return m_manager; }
  *     // ... other methods
- *     
+ *
  * public slots:
  *     void onActionMyAction() { // handle action }
  * };
  * @endcode
  */
+// Legacy (grouped) declaration kept for reference only (NOT ABI-accurate).
+#if 0
 class AC_Responder {
 public:
     virtual ~AC_Responder() = default;
@@ -273,6 +300,60 @@ public:
      */
     virtual AC_Manager* actionManager() const = 0;
 };
+#endif
+
+/**
+ * @brief ABI-accurate AC_Responder interface (Harmony Premium)
+ *
+ * Virtual method order verified in `ToonBoomActionManager.dll.i64`:
+ * - `??_7AC_Responder@@6B@` at `0x18004cd28`
+ *
+ * Slot indices below are 0-based (slot 0 is the destructor). Do not reorder.
+ */
+class AC_Responder {
+public:
+  virtual ~AC_Responder() = default;
+
+  // Vtable slot 1: Action manager back-pointer
+  virtual AC_Manager *actionManager() const = 0; // slot 1
+
+  // Vtable slots 2-3: Messaging / shortcut behavior
+  virtual bool shouldReceiveMessages() const = 0; // slot 2
+  virtual bool handleShortcuts() const = 0;       // slot 3
+
+  // Vtable slots 4-6: First responder (keyboard focus)
+  virtual bool resignFirstResponder() = 0;  // slot 4
+  virtual bool becomeFirstResponder() = 0;  // slot 5
+  virtual bool acceptsFirstResponder() = 0; // slot 6
+
+  // Vtable slots 7-9: Selection responder
+  virtual bool resignSelectionResponder() = 0;  // slot 7
+  virtual bool becomeSelectionResponder() = 0;  // slot 8
+  virtual bool acceptsSelectionResponder() = 0; // slot 9
+
+  // Vtable slots 10-12: Identity / description
+  virtual const QString &responderIdentity() const = 0;    // slot 10
+  virtual const QString &responderDescription() const = 0; // slot 11
+  virtual void
+  setResponderDescription(const QString &description) = 0; // slot 12
+
+  // Vtable slot 13: Responder chain parent
+  virtual AC_Responder *parentResponder() = 0; // slot 13
+
+  // Vtable slot 14: Unknown/reserved (default implementation is a no-op in this
+  // build)
+  virtual void reserved0() {} // slot 14
+
+  // Vtable slots 15-16: Action execution
+  virtual AC_Result perform(AC_ActionInfo *info) = 0;               // slot 15
+  virtual AC_Result performDownToChildren(AC_ActionInfo *info) = 0; // slot 16
+
+  // Vtable slot 17: Event handling
+  virtual AC_Result handleEvent(QEvent *event) = 0; // slot 17
+
+  // Vtable slot 18: Proxy responder (redirect actions to another responder)
+  virtual AC_Responder *proxyResponder() = 0; // slot 18
+};
 
 /**
  * @brief Simple base class for implementing AC_Responder
@@ -285,49 +366,53 @@ public:
  */
 class AC_ResponderBase : public AC_Responder {
 public:
-    AC_ResponderBase(const QString& identity, AC_Manager* manager = nullptr)
-        : m_identity(identity), m_manager(manager) {}
-    
-    virtual ~AC_ResponderBase() = default;
-    
-    // Identity
-    const QString& responderIdentity() const override { return m_identity; }
-    const QString& responderDescription() const override { return m_description; }
-    void setResponderDescription(const QString& desc) override { m_description = desc; }
-    
-    // Chain - override in subclasses if needed
-    AC_Responder* parentResponder() override { return nullptr; }
-    AC_Responder* proxyResponder() override { return nullptr; }
-    
-    // First responder - typically not needed for simple responders
-    bool acceptsFirstResponder() override { return false; }
-    bool becomeFirstResponder() override { return false; }
-    bool resignFirstResponder() override { return true; }
-    
-    // Selection responder - typically not needed for simple responders
-    bool acceptsSelectionResponder() override { return false; }
-    bool becomeSelectionResponder() override { return false; }
-    bool resignSelectionResponder() override { return true; }
-    
-    // Action handling - override perform() in subclasses
-    AC_Result perform(AC_ActionInfo* /*info*/) override { return AC_Result::NotHandled; }
-    AC_Result performDownToChildren(AC_ActionInfo* /*info*/) override { return AC_Result::NotHandled; }
-    
-    // Messages
-    bool shouldReceiveMessages() const override { return true; }
-    bool handleShortcuts() const override { return true; }
-    
-    // Events
-    AC_Result handleEvent(QEvent* /*event*/) override { return AC_Result::NotHandled; }
-    
-    // Manager
-    AC_Manager* actionManager() const override { return m_manager; }
-    void setActionManager(AC_Manager* manager) { m_manager = manager; }
+  AC_ResponderBase(const QString &identity, QObject* obj, AC_Manager *manager = nullptr)
+      : m_identity(identity), m_object(obj), m_manager(manager) {
+        
+    }
+
+  virtual ~AC_ResponderBase() = default;
+
+  AC_Manager *actionManager() const override { return m_manager; }
+
+  bool shouldReceiveMessages() const override { return true; }
+  bool handleShortcuts() const override { return true; }
+
+  bool resignFirstResponder() override { return true; }
+  bool becomeFirstResponder() override { return false; }
+  bool acceptsFirstResponder() override { return false; }
+
+  bool resignSelectionResponder() override { return true; }
+  bool becomeSelectionResponder() override { return false; }
+  bool acceptsSelectionResponder() override { return false; }
+
+  const QString &responderIdentity() const override { return m_identity; }
+  const QString &responderDescription() const override { return m_description; }
+  void setResponderDescription(const QString &desc) override {
+    m_description = desc;
+  }
+
+  AC_Responder *parentResponder() override { return nullptr; }
+  AC_Responder *proxyResponder() override { return this; }
+
+  AC_Result perform(AC_ActionInfo *info) override {
+    return info->invokeOnQObject(m_object);
+  }
+  AC_Result performDownToChildren(AC_ActionInfo *info) override {
+    return AC_Result::Handled;
+  }
+
+  AC_Result handleEvent(QEvent * /*event*/) override {
+    return AC_Result::Handled;
+  }
+  void setActionManager(AC_Manager *manager) { m_manager = manager; }
 
 protected:
-    QString m_identity;
-    QString m_description;
-    AC_Manager* m_manager;
+  QString m_identity;
+  QString m_description;
+  AC_Manager *m_manager;
+private:
+  QObject* m_object;
 };
 
 /**
@@ -336,10 +421,10 @@ protected:
  * sizeof(AC_ManagerInitParams) = 0x20 (32 bytes) on x64
  */
 struct AC_ManagerInitParams {
-    void* keywords;          ///< +0x00: Pointer to keywords QList<QString>
-    void* keywordsEnd;       ///< +0x08: End pointer for keywords
-    void* keywordsCapacity;  ///< +0x10: Capacity pointer for keywords
-    bool trimShortcuts;      ///< +0x18: Initial value for TrimShortcuts option
+  void *keywords;         ///< +0x00: Pointer to keywords QList<QString>
+  void *keywordsEnd;      ///< +0x08: End pointer for keywords
+  void *keywordsCapacity; ///< +0x10: Capacity pointer for keywords
+  bool trimShortcuts;     ///< +0x18: Initial value for TrimShortcuts option
 };
 
 /**
@@ -355,8 +440,16 @@ struct AC_ManagerInitParams {
  * - Shortcut/keyboard event handling
  * - Image/icon loading for UI elements
  *
- * vtable at 0x18004e508 (76 virtual methods)
+ * ABI note (MSVC x64, Harmony Premium):
+ * - Abstract base vtable: `??_7AC_Manager@@6B@` at `0x18004e508` (72 entries
+ * incl. dtor)
+ * - Concrete vtable used by `AC_Manager*` calls:
+ * `??_7AC_ManagerImpl@@6BAC_Manager@@@` at `0x18004e7c8`
+ *
+ * IMPORTANT: `AC_Manager` is a vtable interface; virtual method order is ABI.
  */
+// Legacy (grouped) declaration kept for reference only (NOT ABI-accurate).
+#if 0
 class AC_Manager {
 public:
     virtual ~AC_Manager() = 0;
@@ -944,6 +1037,170 @@ public:
      */
     static AC_Responder* createResponderForWidget(AC_Manager* manager, QWidget* widget);
 };
+#endif
+
+/**
+ * @brief ABI-accurate AC_Manager interface (Harmony Premium)
+ *
+ * Virtual method order verified in `ToonBoomActionManager.dll.i64`:
+ * - `??_7AC_ManagerImpl@@6BAC_Manager@@@` at `0x18004e7c8`
+ *
+ * Slot indices below are 0-based (slot 0 is the destructor). Do not reorder.
+ */
+class AC_Manager {
+public:
+  virtual ~AC_Manager() = 0;
+
+  // Vtable slots 1-6: Options / Hover ID
+  virtual QString option(const QString &name) const = 0; // slot 1
+  virtual int option(AC_ManagerOption option) const = 0; // slot 2
+  virtual bool setOption(const QString &name,
+                         const QString &value) = 0;               // slot 3
+  virtual bool setOption(AC_ManagerOption option, int value) = 0; // slot 4
+  virtual void setHoverId(const QString &id) = 0;                 // slot 5
+  virtual QString hoverId() const = 0;                            // slot 6
+
+  // Vtable slots 7-17: Menu definitions / creation
+  virtual void loadMenus(const QString &path) = 0;        // slot 7
+  virtual void loadMenus(const QDomElement &element) = 0; // slot 8
+  virtual void loadPluginMenus(const QString &name,
+                               QList<QString> &placeholders,
+                               const QDomElement &element) = 0; // slot 9
+  virtual AC_Menu *createPopupMenu(const QString &name, QWidget *parent,
+                                   QObject *owner) = 0; // slot 10
+  virtual AC_Menu *createPopupMenu(const QDomElement &element, QWidget *parent,
+                                   QObject *owner) = 0; // slot 11
+  virtual AC_Menu *createPopupMenuWithIcons(const QString &name,
+                                            QWidget *parent,
+                                            QObject *owner) = 0; // slot 12
+  virtual AC_Menu *createMenuBar(const QString &name,
+                                 QMenuBar *menuBar) = 0; // slot 13
+  virtual AC_Menu *createMenuBar(const QDomElement &element,
+                                 QMenuBar *menuBar) = 0; // slot 14
+  virtual AC_Menu *createMenuBar(const QString &name,
+                                 QWidget *parent) = 0; // slot 15
+  virtual AC_Menu *createMenuBar(const QDomElement &element,
+                                 QWidget *parent) = 0; // slot 16
+  virtual QDomElement
+  menuElement(const QString &name) = 0; // slot 17 (returns by value; MSVC x64
+                                        // uses sret out buffer)
+
+  // Vtable slot 18: Identity
+  virtual QString generateIdentity() = 0; // slot 18
+
+  // Vtable slots 19-35: Responder chain
+  virtual bool registerResponder(AC_Responder *responder,
+                                 QWidget *widget) = 0;               // slot 19
+  virtual void unregisterResponder(AC_Responder *responder) = 0;     // slot 20
+  virtual AC_Responder *applicationResponder() const = 0;            // slot 21
+  virtual void setApplicationResponder(AC_Responder *responder) = 0; // slot 22
+  virtual AC_Responder *selectionResponder() const = 0;              // slot 23
+  virtual void selectionCleared(AC_Responder *responder) = 0;        // slot 24
+  virtual bool setSelectionResponder(AC_Responder *responder) = 0;   // slot 25
+  virtual AC_Responder *firstResponder() const = 0;                  // slot 26
+  virtual bool setFirstResponder(AC_Responder *responder) = 0;       // slot 27
+  virtual AC_Responder *responder(const QList<QString> &identities,
+                                  AC_Responder *fallback) const = 0;  // slot 28
+  virtual AC_Responder *responder(const QString &identity) const = 0; // slot 29
+  virtual AC_Responder *responder(const char *identity) const = 0;    // slot 30
+  virtual AC_Responder *
+  responderForWidget(QWidget *widget) const = 0;    // slot 31
+  virtual AC_Responder *mouseResponder() const = 0; // slot 32
+  virtual QList<QString>
+  allResponderIdentities() const = 0; // slot 33 (returns by value; sret)
+  virtual QList<QString> responderSlotList(
+      const QString &identity,
+      bool includeInherited) const = 0; // slot 34 (returns by value; sret)
+  virtual void pushUp(AC_Responder *responder) = 0; // slot 35
+
+  // Vtable slots 36-43: Shortcuts / keyboard
+  virtual AC_ShortcutManager *shortcutManager() const = 0;          // slot 36
+  virtual void setShortcutManager(AC_ShortcutManager *manager) = 0; // slot 37
+  virtual void loadShortcuts(const QDomElement &element) = 0;       // slot 38
+  virtual void loadShortcuts(const QString &path) = 0;              // slot 39
+  virtual AC_Result handleKeyEvent(QKeyEvent *event,
+                                   bool isRelease) = 0; // slot 40
+  virtual bool isShortcut(const char *shortcut,
+                          QKeyEvent *event) const = 0;               // slot 41
+  virtual int keyCodeForShortcut(const QString &shortcut) const = 0; // slot 42
+  virtual QKeySequence keySequenceForShortcut(
+      const QString &shortcut) const = 0; // slot 43 (returns by value; sret)
+
+  // Vtable slots 44-45: Widget ignore
+  virtual void ignoreWidget(QWidget *widget) = 0; // slot 44
+  virtual bool isWidgetIgnored(QWidget *widget,
+                               bool checkParents) const = 0; // slot 45
+
+  // Vtable slots 46-52: Toolbars
+  virtual void loadToolbars(const QString &path,
+                            QList<QString> &ids) = 0; // slot 46
+  virtual void loadToolbars(const QDomElement &element,
+                            QList<QString> &ids) = 0; // slot 47
+  virtual AC_Toolbar *createToolbar(const QString &name, QList<QString> *ids,
+                                    QMainWindow *mainWindow, int area,
+                                    const char *objectName,
+                                    QObject *owner) = 0; // slot 48
+  virtual AC_Toolbar *createToolbar(const QDomElement &element,
+                                    QList<QString> *ids,
+                                    QMainWindow *mainWindow, int area,
+                                    const char *objectName,
+                                    QObject *owner) = 0;     // slot 49
+  virtual void registerToolbar(AC_ToolbarImpl *toolbar) = 0; // slot 50
+  virtual AC_ToolbarMultiButton *
+  createToolbarMultiButton(const QDomElement &element,
+                           AC_ContainerImpl *container,
+                           QWidget *parent) = 0; // slot 51
+  virtual QDomElement
+  toolbarElement(const QString &name) = 0; // slot 52 (returns by value; sret)
+
+  // Vtable slots 53-56: Toolbar refresh + main menu bar accessors
+  virtual void updateToolbars() = 0;          // slot 53
+  virtual void updateToolbarText() = 0;       // slot 54
+  virtual AC_Menu *menuBar() const = 0;       // slot 55
+  virtual void setMenuBar(AC_Menu *menu) = 0; // slot 56
+
+  // Vtable slots 57-62: Images / icons
+  virtual QString
+  findImage(const QString &name) = 0; // slot 57 (returns by value; sret)
+  virtual void addImageDir(const QString &dir) = 0;   // slot 58
+  virtual void addImageDirs(const QString &dirs) = 0; // slot 59
+  virtual QIcon
+  loadImage(const QString &name, const QColor &blendColor,
+            bool useGeneric) = 0; // slot 60 (returns by value; sret)
+  virtual QIcon createQActionCompatibleIcon(
+      const QIcon &icon) = 0; // slot 61 (returns by value; sret)
+  virtual void setGenericImage(const QString &name) = 0; // slot 62
+
+  // Vtable slots 63-67: Toolbar customize image + item generator
+  virtual void setToolbarCustomizeImage(const QString &name) = 0; // slot 63
+  virtual QString
+  toolbarCustomizeImage() const = 0; // slot 64 (returns by value; sret)
+  virtual void registerResponderFactoryFnc(
+      QWidget *widget,
+      AC_Responder *(*factory)(AC_Manager *, QWidget *)) = 0; // slot 65
+  virtual AC_ToolbarItemGenerator *itemGenerator() const = 0; // slot 66
+  virtual void
+  setItemGenerator(AC_ToolbarItemGenerator *generator) = 0; // slot 67
+
+  // Vtable slots 68-71: Actions / validation
+  virtual AC_Result trigger(const QString &responderIdentity,
+                            const QString &actionName,
+                            const std::vector<QVariant> &args,
+                            bool forEachResponder) = 0; // slot 68
+  virtual AC_Result trigger(const QString &responderIdentity,
+                            const QString &actionName,
+                            bool forEachResponder) = 0; // slot 69
+  virtual AC_Result triggerForEach(const QString &responderIdentity,
+                                   const QString &actionName,
+                                   bool forEachResponder) = 0; // slot 70
+  virtual AC_Result performValidation(const QString &responderIdentity,
+                                      const QString &actionName, bool *enabled,
+                                      bool *checked) = 0; // slot 71
+
+  // Static Factory (not part of the vtable)
+  static AC_Responder *createResponderForWidget(AC_Manager *manager,
+                                                QWidget *widget);
+};
 
 /**
  * @brief Concrete implementation of AC_Manager
@@ -991,141 +1248,141 @@ public:
  * - updateToolbarsText()
  */
 class AC_ManagerImpl : public QObject, public AC_Manager {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    /**
-     * @brief Construct AC_ManagerImpl with initialization parameters
-     * @param params Initialization parameters
-     */
-    explicit AC_ManagerImpl(const AC_ManagerInitParams& params);
-    virtual ~AC_ManagerImpl() override;
+  /**
+   * @brief Construct AC_ManagerImpl with initialization parameters
+   * @param params Initialization parameters
+   */
+  explicit AC_ManagerImpl(const AC_ManagerInitParams &params);
+  virtual ~AC_ManagerImpl() override;
 
-    // All AC_Manager virtual methods are implemented...
-    // See AC_Manager for documentation
+  // All AC_Manager virtual methods are implemented...
+  // See AC_Manager for documentation
 
-    // Additional non-virtual methods
+  // Additional non-virtual methods
 
-    /**
-     * @brief Get the keywords list
-     * @return Reference to keywords list
-     */
-    const QList<QString>& keywords() const;
+  /**
+   * @brief Get the keywords list
+   * @return Reference to keywords list
+   */
+  const QList<QString> &keywords() const;
 
-    /**
-     * @brief Check if shortcuts should be trimmed
-     * @return true if trimming is enabled
-     */
-    bool trimShortcuts() const;
+  /**
+   * @brief Check if shortcuts should be trimmed
+   * @return true if trimming is enabled
+   */
+  bool trimShortcuts() const;
 
-    /**
-     * @brief Check if a responder is registered
-     * @param responder Responder to check
-     * @return true if registered
-     */
-    bool isRegistred(AC_Responder* responder) const;
+  /**
+   * @brief Check if a responder is registered
+   * @param responder Responder to check
+   * @return true if registered
+   */
+  bool isRegistred(AC_Responder *responder) const;
 
-    /**
-     * @brief Get all responders matching identity list
-     * @param identities Identity list to match
-     * @param fallback Fallback responder
-     * @return Vector of matching responders
-     */
-    std::vector<AC_Responder*> responders(const QList<QString>& identities,
-                                           AC_Responder* fallback) const;
+  /**
+   * @brief Get all responders matching identity list
+   * @param identities Identity list to match
+   * @param fallback Fallback responder
+   * @return Vector of matching responders
+   */
+  std::vector<AC_Responder *> responders(const QList<QString> &identities,
+                                         AC_Responder *fallback) const;
 
-    /**
-     * @brief Get all responders matching single identity
-     * @param identity Identity to match
-     * @return Vector of matching responders
-     */
-    std::vector<AC_Responder*> responders(const QString& identity) const;
+  /**
+   * @brief Get all responders matching single identity
+   * @param identity Identity to match
+   * @return Vector of matching responders
+   */
+  std::vector<AC_Responder *> responders(const QString &identity) const;
 
-    /**
-     * @brief Normalize a string for comparison
-     * @param str String to normalize
-     * @return Normalized string
-     */
-    static QString normalize(const QString& str);
-
-    
+  /**
+   * @brief Normalize a string for comparison
+   * @param str String to normalize
+   * @return Normalized string
+   */
+  static QString normalize(const QString &str);
 
 signals:
-    /**
-     * @brief Emitted when the first responder changes
-     */
-    void firstResponderChanged();
+  /**
+   * @brief Emitted when the first responder changes
+   */
+  void firstResponderChanged();
 
-    /**
-     * @brief Emitted when the selection responder changes
-     */
-    void selectionResponderChanged();
+  /**
+   * @brief Emitted when the selection responder changes
+   */
+  void selectionResponderChanged();
 
-    /**
-     * @brief Emitted to signal toolbar update needed
-     */
-    void updateToolbarsSignal();
+  /**
+   * @brief Emitted to signal toolbar update needed
+   */
+  void updateToolbarsSignal();
 
-    /**
-     * @brief Emitted to signal toolbar text update needed
-     */
-    void updateToolbarsText();
+  /**
+   * @brief Emitted to signal toolbar text update needed
+   */
+  void updateToolbarsText();
 
 protected:
-    /**
-     * @brief Fire the first responder changed signal
-     */
-    void fireFirstResponderChanged();
+  /**
+   * @brief Fire the first responder changed signal
+   */
+  void fireFirstResponderChanged();
 
-    /**
-     * @brief Fire the selection responder changed signal
-     */
-    void fireSelectionResponderChanged();
+  /**
+   * @brief Fire the selection responder changed signal
+   */
+  void fireSelectionResponderChanged();
 
-    /**
-     * @brief Fire toolbar update signal
-     */
-    void fireUpdateToolbars();
+  /**
+   * @brief Fire toolbar update signal
+   */
+  void fireUpdateToolbars();
 
-    /**
-     * @brief Fire toolbar text update signal
-     */
-    void fireUpdateToolbarText();
+  /**
+   * @brief Fire toolbar text update signal
+   */
+  void fireUpdateToolbarText();
 
-    /**
-     * @brief Fire toolbar button clicked notification
-     * @param identity Button identity
-     */
-    void fireToolbarButtonClicked(const QString& identity);
+  /**
+   * @brief Fire toolbar button clicked notification
+   * @param identity Button identity
+   */
+  void fireToolbarButtonClicked(const QString &identity);
 
 protected slots:
-    /**
-     * @brief Handle ignored widget destruction
-     * @param object Destroyed object
-     */
-    void ignoredWidgetDestroyed(QObject* object);
+  /**
+   * @brief Handle ignored widget destruction
+   * @param object Destroyed object
+   */
+  void ignoredWidgetDestroyed(QObject *object);
 };
 
 // ============================================================================
 // Offset Constants (for reference/debugging)
 // ============================================================================
 namespace AC_ManagerImpl_Offsets {
-    // Offsets from AC_Manager base (this + 16 from QObject base)
-    constexpr size_t Keywords              = 0x08;   // 8 - QList<QString>* to keywords
-    constexpr size_t TrimShortcutsInit     = 0x18;   // 24 - Initial trimShortcuts value
-    constexpr size_t ResponderNameMap      = 0x28;   // 40 - Internal tree for name->responders
-    constexpr size_t MenuTree              = 0x50;   // 80 - Internal tree for menus
-    constexpr size_t ShortcutManager       = 0x68;   // 104 - AC_ShortcutManager*
-    constexpr size_t HoverId               = 0x78;   // 120 - QString m_hoverId
-    constexpr size_t GenericImage          = 0x90;   // 144 - QString m_genericImage
-    constexpr size_t ToolbarCustomizeImage = 0xA8;   // 168 - QString m_toolbarCustomizeImage
-    constexpr size_t ToolbarTree           = 0xB8;   // 184 - Internal tree for toolbars
-    constexpr size_t RegisteredResponders  = 0xD0;   // 208 - std::vector<AC_Responder*>
-    constexpr size_t ResponderStack        = 0xE8;   // 232 - std::vector<AC_Responder*>
-    constexpr size_t MenuBar               = 0x108;  // 264 - AC_Menu*
-    constexpr size_t ApplicationResponder  = 0x118;  // 280 - AC_Responder*
-    constexpr size_t SelectionResponder    = 0x120;  // 288 - AC_Responder*
-    constexpr size_t ItemGenerator         = 0x128;  // 296 - AC_ToolbarItemGenerator*
-    constexpr size_t TrimShortcutsOption   = 0x130;  // 304 - bool (option value)
-}
-
+// Offsets from AC_Manager base (this + 16 from QObject base)
+constexpr size_t Keywords = 0x08;          // 8 - QList<QString>* to keywords
+constexpr size_t TrimShortcutsInit = 0x18; // 24 - Initial trimShortcuts value
+constexpr size_t ResponderNameMap =
+    0x28;                         // 40 - Internal tree for name->responders
+constexpr size_t MenuTree = 0x50; // 80 - Internal tree for menus
+constexpr size_t ShortcutManager = 0x68; // 104 - AC_ShortcutManager*
+constexpr size_t HoverId = 0x78;         // 120 - QString m_hoverId
+constexpr size_t GenericImage = 0x90;    // 144 - QString m_genericImage
+constexpr size_t ToolbarCustomizeImage =
+    0xA8;                            // 168 - QString m_toolbarCustomizeImage
+constexpr size_t ToolbarTree = 0xB8; // 184 - Internal tree for toolbars
+constexpr size_t RegisteredResponders =
+    0xD0;                               // 208 - std::vector<AC_Responder*>
+constexpr size_t ResponderStack = 0xE8; // 232 - std::vector<AC_Responder*>
+constexpr size_t MenuBar = 0x108;       // 264 - AC_Menu*
+constexpr size_t ApplicationResponder = 0x118; // 280 - AC_Responder*
+constexpr size_t SelectionResponder = 0x120;   // 288 - AC_Responder*
+constexpr size_t ItemGenerator = 0x128;        // 296 - AC_ToolbarItemGenerator*
+constexpr size_t TrimShortcutsOption = 0x130;  // 304 - bool (option value)
+} // namespace AC_ManagerImpl_Offsets

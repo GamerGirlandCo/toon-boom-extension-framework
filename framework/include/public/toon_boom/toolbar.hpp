@@ -262,108 +262,108 @@ public:
  * - Placeholder system for customization
  * - Integration with AC_Manager
  *
- * vtable at 0x180054eb0 (32 entries for main vtable)
+ * IMPORTANT: This class does NOT use C++ multiple inheritance even though
+ * conceptually it includes AC_Object, AC_Container, and AC_Help functionality.
+ * The vtable is a flat structure with all 66 methods in the exact order
+ * shown below. DO NOT change the order of virtual methods.
+ *
+ * vtable at 0x180054ef8 (66 entries, accessed at offset +128 from AC_ToolbarImpl*)
+ *
+ * When you get an AC_Toolbar* from AC_Manager::createToolbar(), it points
+ * to offset +128 within the AC_ToolbarImpl object.
  */
-class AC_Toolbar : public AC_Object, public AC_Container, public AC_Help {
+class AC_Toolbar {
 public:
+    // =========================================================================
+    // Vtable slots 0-5: Destructor and basic AC_Object properties
+    // =========================================================================
+
+    /** @brief Slot 0: Virtual destructor */
     virtual ~AC_Toolbar() = 0;
 
-    // =========================================================================
-    // Identity and Basic Properties
-    // =========================================================================
+    /** @brief Slot 1: Get the toolbar identity string */
+    virtual const QString& identity() const = 0;
 
-    /**
-     * @brief Get the toolbar identity
-     * @return Reference to identity QString (at offset -72 from AC_Toolbar*)
-     */
-    virtual const QString& identity() const override = 0;
+    /** @brief Slot 2: Check if toolbar is enabled */
+    virtual bool isEnabled() const = 0;
 
-    /**
-     * @brief Get the toolbar text/title
-     * @return Toolbar title
-     */
-    virtual QString text() const = 0;
+    /** @brief Slot 3: Set toolbar enabled state */
+    virtual void setEnabled(bool enabled) = 0;
 
-    /**
-     * @brief Set the toolbar text/title
-     * @param text New title
-     */
-    virtual void setText(const QString& text) = 0;
+    /** @brief Slot 4: Check if toolbar is visible */
+    virtual bool isVisible() const = 0;
 
-    /**
-     * @brief Check if toolbar is visible
-     * @return true if visible
-     */
-    virtual bool isVisible() const override = 0;
-
-    /**
-     * @brief Set toolbar visibility
-     * @param visible New visibility state
-     */
-    virtual void setVisible(bool visible) override = 0;
-
-    /**
-     * @brief Check if toolbar is enabled
-     * @return true if enabled
-     */
-    virtual bool isEnabled() const override = 0;
-
-    /**
-     * @brief Set toolbar enabled state
-     * @param enabled New enabled state
-     */
-    virtual void setEnabled(bool enabled) override = 0;
-
-    /**
-     * @brief Check if toolbar is customizable
-     * @return true if customization is allowed
-     */
-    virtual bool isCustomizable() const = 0;
+    /** @brief Slot 5: Set toolbar visibility */
+    virtual void setVisible(bool visible) = 0;
 
     // =========================================================================
-    // Manager and Owner
+    // Vtable slots 6-12: Type checking (AC_Object type system)
     // =========================================================================
 
-    /**
-     * @brief Get the associated AC_Manager
-     * @return Manager pointer or nullptr
-     */
+    /** @brief Slot 6: Check if this is a toolbar (returns true) */
+    virtual bool isToolbar() const = 0;
+
+    /** @brief Slot 7: Reserved (returns false) */
+    virtual bool _reserved_slot7() const = 0;
+
+    /** @brief Slot 8: Reserved (returns false) */
+    virtual bool _reserved_slot8() const = 0;
+
+    /** @brief Slot 9: Reserved (returns false) */
+    virtual bool _reserved_slot9() const = 0;
+
+    /** @brief Slot 10: Reserved (returns false) */
+    virtual bool _reserved_slot10() const = 0;
+
+    /** @brief Slot 11: Reserved (returns false) */
+    virtual bool _reserved_slot11() const = 0;
+
+    /** @brief Slot 12: Check if this is a container (returns true) */
+    virtual bool isContainer() const = 0;
+
+    // =========================================================================
+    // Vtable slots 13-26: Type conversion (AC_Object casting)
+    // =========================================================================
+
+    /** @brief Slot 13: Cast to AC_Toolbar (const) */
+    virtual const AC_Toolbar* toToolbar_const1() const = 0;
+
+    /** @brief Slot 14: Cast to AC_Toolbar (const variant) */
+    virtual const AC_Toolbar* toToolbar_const2() const = 0;
+
+    /** @brief Slot 15-24: Cast to AC_Separator (returns nullptr, 10 variants) */
+    virtual const AC_Separator* toSeparator_v1() const = 0;
+    virtual const AC_Separator* toSeparator_v2() const = 0;
+    virtual const AC_Separator* toSeparator_v3() const = 0;
+    virtual const AC_Separator* toSeparator_v4() const = 0;
+    virtual const AC_Separator* toSeparator_v5() const = 0;
+    virtual const AC_Separator* toSeparator_v6() const = 0;
+    virtual const AC_Separator* toSeparator_v7() const = 0;
+    virtual const AC_Separator* toSeparator_v8() const = 0;
+    virtual const AC_Separator* toSeparator_v9() const = 0;
+    virtual const AC_Separator* toSeparator_v10() const = 0;
+
+    /** @brief Slot 25: Cast to AC_Toolbar (non-const) */
+    virtual const AC_Toolbar* toToolbar_v1() const = 0;
+
+    /** @brief Slot 26: Cast to AC_Toolbar (non-const variant) */
+    virtual const AC_Toolbar* toToolbar_v2() const = 0;
+
+    // =========================================================================
+    // Vtable slots 27-32: Core toolbar operations
+    // =========================================================================
+
+    /** @brief Slot 27: Get the associated AC_Manager */
     virtual AC_Manager* manager() const = 0;
 
-    /**
-     * @brief Get the owner object
-     * @return Owner QObject or nullptr
-     */
-    virtual QObject* owner() const = 0;
+    /** @brief Slot 28: Remove the toolbar from its parent */
+    virtual void remove() = 0;
+
+    /** @brief Slot 29: Get as QToolBar */
+    virtual QToolBar* toQToolBar() = 0;
 
     /**
-     * @brief Set the owner object
-     * @param owner New owner
-     */
-    virtual void setOwner(QObject* owner) = 0;
-
-    // =========================================================================
-    // Item Generator
-    // =========================================================================
-
-    /**
-     * @brief Get the toolbar item generator
-     * @return Item generator or nullptr
-     */
-    virtual AC_ToolbarItemGenerator* itemGenerator() const = 0;
-
-    /**
-     * @brief Set the toolbar item generator
-     * @param generator New generator
-     */
-    virtual void setItemGenerator(AC_ToolbarItemGenerator* generator) = 0;
-
-    // =========================================================================
-    // Content Management
-    // =========================================================================
-
-    /**
-     * @brief Insert an object from XML element
+     * @brief Slot 30: Insert an object from XML element
      * @param beforeObject Insert before this object (nullptr = end)
      * @param element XML element defining the item
      * @return Inserted AC_Object or nullptr
@@ -371,40 +371,7 @@ public:
     virtual AC_Object* insert(AC_Object* beforeObject, const QDomElement& element) = 0;
 
     /**
-     * @brief Insert a separator before an object
-     * @param beforeObject Insert before this object
-     * @return Created separator or nullptr
-     */
-    virtual AC_Separator* insertSeparator(AC_Object* beforeObject) = 0;
-
-    /**
-     * @brief Insert at a named placeholder
-     * @param placeholder Placeholder name
-     * @param element XML element defining the item
-     * @return Inserted AC_Object or nullptr
-     */
-    virtual AC_Object* insertAtPlaceholder(const char* placeholder,
-                                            const QDomElement& element) = 0;
-
-    /**
-     * @brief Insert at placeholder with full parameters
-     * @param placeholder Placeholder name
-     * @param responderIdentity Responder identity
-     * @param actionName Action name
-     * @param objectName Object name (may be nullptr)
-     * @param keywords Keywords list (may be nullptr)
-     * @param visible Initial visibility
-     * @return Inserted AC_Object or nullptr
-     */
-    virtual AC_Object* insertAtPlaceholder(const char* placeholder,
-                                            const QString& responderIdentity,
-                                            const QString& actionName,
-                                            const char* objectName,
-                                            const QList<QString>* keywords,
-                                            bool visible) = 0;
-
-    /**
-     * @brief Insert placeholder contents
+     * @brief Slot 31: Insert placeholder contents
      * @param beforeObject Insert before this object
      * @param responderIdentity Responder identity
      * @param actionName Action name
@@ -423,93 +390,169 @@ public:
                                                 bool flag) = 0;
 
     /**
-     * @brief Remove an object by identity
+     * @brief Slot 32: Insert a separator before an object
+     * @param beforeObject Insert before this object
+     * @return Created separator or nullptr
+     */
+    virtual AC_Separator* insertSeparator(AC_Object* beforeObject) = 0;
+
+    // =========================================================================
+    // Vtable slots 33-41: AC_Container interface
+    // =========================================================================
+
+    /**
+     * @brief Slot 33: Find object by identity
+     * @param identity Identity string to find
+     * @return Found object or nullptr
+     */
+    virtual AC_Object* findObject(const char* identity) const = 0;
+
+    /**
+     * @brief Slot 34: Find item by identity
+     * @param identity Identity string to find
+     * @return Found item or nullptr
+     */
+    virtual AC_Item* findItem(const char* identity) const = 0;
+
+    /**
+     * @brief Slot 35: Remove an object by identity
      * @param identity Object identity to remove
      * @return true if removed successfully
      */
     virtual bool removeObject(const char* identity) = 0;
 
     /**
-     * @brief Remove a QAction from the toolbar
-     * @param action Action to remove
+     * @brief Slot 36: Get index of object by identity
+     * @param identity Identity string to find
+     * @return Zero-based index or -1 if not found
      */
-    virtual void removeAction(QAction* action) = 0;
+    virtual int indexOf(const char* identity) const = 0;
 
     /**
-     * @brief Remove a child QObject
-     * @param child Child to remove
+     * @brief Slot 37: Get index of an object
+     * @param object Object to find
+     * @return Zero-based index or -1 if not found
      */
-    virtual void removeChild(QObject* child) = 0;
+    virtual int indexOf(AC_Object* object) const = 0;
 
     /**
-     * @brief Clear all objects from toolbar
+     * @brief Slot 38: Get the number of objects in this container
+     * @return Object count
      */
-    virtual void clear() = 0;
+    virtual int objectCount() const = 0;
 
     /**
-     * @brief Clear a specific placeholder
-     * @param placeholder Placeholder name to clear
+     * @brief Slot 39: Get object at specified index
+     * @param index Zero-based index
+     * @return AC_Object at index or nullptr
      */
-    virtual void clearPlaceholder(const char* placeholder) = 0;
+    virtual AC_Object* objectAtIndex(int index) const = 0;
 
     /**
-     * @brief Clear all placeholders
+     * @brief Slot 40: Check if item is checked
+     * @param identity Item identity
+     * @return true if item exists and is checked
      */
-    virtual void clearPlaceholders() = 0;
+    virtual bool isChecked(const char* identity) const = 0;
 
     /**
-     * @brief Hide all objects
+     * @brief Slot 41: Set checked state of item
+     * @param identity Item identity
+     * @param checked New checked state
      */
-    virtual void hideAllObjects() = 0;
-
-    /**
-     * @brief Remove the toolbar from its parent
-     */
-    virtual void remove() = 0;
+    virtual void setChecked(const char* identity, bool checked) = 0;
 
     // =========================================================================
-    // Configuration
+    // Vtable slots 42-49: Validation and configuration
     // =========================================================================
 
-    /**
-     * @brief Get current configuration
-     * @return List of item identities in current order
-     */
-    virtual QList<QString> config() const = 0;
+    /** @brief Slot 42: Validate all content (enable/disable states) */
+    virtual void validateContent() = 0;
 
     /**
-     * @brief Set configuration from list
+     * @brief Slot 43: Open customization dialog
+     * @param parent Parent widget for dialog
+     */
+    virtual void customize(QWidget* parent) = 0;
+
+    /**
+     * @brief Slot 44: Set configuration from list
      * @param config List of item identities
      */
     virtual void setConfig(const QList<QString>& config) = 0;
 
     /**
-     * @brief Get default configuration
-     * @return List of item identities in default order
-     */
-    virtual QList<QString> defaultConfig() const = 0;
-
-    /**
-     * @brief Set default configuration
+     * @brief Slot 45: Set default configuration
      * @param config List of item identities for default
      */
     virtual void setDefaultConfig(const QList<QString>& config) = 0;
 
     /**
-     * @brief Check if current config matches default
+     * @brief Slot 46: Get current configuration
+     * @return List of item identities in current order
+     */
+    virtual QList<QString> config() const = 0;
+
+    /**
+     * @brief Slot 47: Get default configuration
+     * @return List of item identities in default order
+     */
+    virtual QList<QString> defaultConfig() const = 0;
+
+    /**
+     * @brief Slot 48: Check if current config matches default
      * @return true if config is default
      */
     virtual bool isDefaultConfig() const = 0;
 
     /**
-     * @brief Check if a button is in default config
+     * @brief Slot 49: Check if a button is in default config
      * @param identity Button identity
      * @return true if button is default
      */
     virtual bool isDefaultButton(const QString& identity) const = 0;
 
+    // =========================================================================
+    // Vtable slots 50-57: Text, generators, and ownership
+    // =========================================================================
+
+    /** @brief Slot 50: Get the toolbar text/title */
+    virtual QString text() const = 0;
+
+    /** @brief Slot 51: Set the toolbar text/title */
+    virtual void setText(const QString& text) = 0;
+
+    /** @brief Slot 52: Get the toolbar item generator */
+    virtual AC_ToolbarItemGenerator* itemGenerator() const = 0;
+
+    /** @brief Slot 53: Set the toolbar item generator */
+    virtual void setItemGenerator(AC_ToolbarItemGenerator* generator) = 0;
+
+    /** @brief Slot 54: Check if toolbar is customizable */
+    virtual bool isCustomizable() const = 0;
+
+    /** @brief Slot 55: Get as QToolBar (duplicate of slot 29) */
+    virtual QToolBar* toQToolBar_v2() = 0;
+
+    /** @brief Slot 56: Get the owner object */
+    virtual QObject* owner() const = 0;
+
+    /** @brief Slot 57: Set the owner object */
+    virtual void setOwner(QObject* owner) = 0;
+
+    // =========================================================================
+    // Vtable slots 58-62: Updates and content changes
+    // =========================================================================
+
     /**
-     * @brief Change toolbar content from XML
+     * @brief Slot 58: Connect update signals
+     * @param receiver Receiver object
+     * @param slot Slot to connect
+     */
+    virtual void connectUpdate(QObject* receiver, const char* slot) = 0;
+
+    /**
+     * @brief Slot 59: Change toolbar content from XML
      * @param element New XML definition
      * @param addedIds Output list of added IDs
      * @param removedIds Output list of removed IDs
@@ -520,7 +563,7 @@ public:
                                 QList<QString>* removedIds) = 0;
 
     /**
-     * @brief Change toolbar content from name
+     * @brief Slot 60: Change toolbar content from name
      * @param name Toolbar definition name
      * @param addedIds Output list of added IDs
      * @param removedIds Output list of removed IDs
@@ -530,37 +573,15 @@ public:
                                 QList<QString>* addedIds,
                                 QList<QString>* removedIds) = 0;
 
-    // =========================================================================
-    // Validation and Updates
-    // =========================================================================
-
     /**
-     * @brief Validate all content (enable/disable states)
+     * @brief Slot 61: Translate a string using toolbar's context
+     * @param text Text to translate
+     * @return Translated string
      */
-    virtual void validateContent() = 0;
+    virtual QString translate(const QString& text) = 0;
 
     /**
-     * @brief Validate content if toolbar is visible
-     */
-    virtual void validateContentIfVisible() = 0;
-
-    /**
-     * @brief Validate tooltip text for all items
-     */
-    virtual void validateTooltipText() = 0;
-
-    /**
-     * @brief Validate tooltip text if toolbar is visible
-     */
-    virtual void validateTooltipTextIfVisible() = 0;
-
-    /**
-     * @brief Update separator visibility based on adjacent items
-     */
-    virtual void updateSeparators() = 0;
-
-    /**
-     * @brief Update customized button states
+     * @brief Slot 62: Update customized button states
      * @param identity Button identity
      * @param oldName Old name
      * @param newName New name
@@ -570,58 +591,30 @@ public:
                                           const QString& newName) = 0;
 
     // =========================================================================
-    // Customization
+    // Vtable slots 63-65: Validation helpers and help
     // =========================================================================
 
-    /**
-     * @brief Open customization dialog
-     * @param parent Parent widget for dialog
-     */
-    virtual void customize(QWidget* parent) = 0;
+    /** @brief Slot 63: Validate content if toolbar is visible */
+    virtual void validateContentIfVisible() = 0;
 
-    /**
-     * @brief Connect update signals
-     * @param receiver Receiver object
-     * @param slot Slot to connect
-     */
-    virtual void connectUpdate(QObject* receiver, const char* slot) = 0;
+    /** @brief Slot 64: Validate tooltip text if toolbar is visible */
+    virtual void validateTooltipTextIfVisible() = 0;
+
+    /** @brief Slot 65: Get context-sensitive help ID */
+    virtual QString cshHelpId() = 0;
 
     // =========================================================================
-    // Widget Conversion
+    // Convenience methods (non-virtual, implemented in terms of above)
     // =========================================================================
 
-    /**
-     * @brief Get as QWidget
-     * @return QWidget pointer (this - 128 for AC_ToolbarImpl)
-     */
-    virtual QWidget* toQWidget() = 0;
+    /** @brief Get as QWidget (calls toQToolBar and casts) */
+    inline QWidget* toQWidget() { return static_cast<QWidget*>(toQToolBar()); }
 
-    /**
-     * @brief Get as QToolBar
-     * @return QToolBar pointer
-     */
-    virtual QToolBar* toQToolBar() = 0;
+    /** @brief Cast to AC_Toolbar (returns this) */
+    inline const AC_Toolbar* toToolbar() const { return toToolbar_const1(); }
 
-    // =========================================================================
-    // Visible Objects
-    // =========================================================================
-
-    /**
-     * @brief Get count of visible objects
-     * @return Number of visible objects
-     */
-    virtual int visibleObjects() = 0;
-
-    // =========================================================================
-    // Translation
-    // =========================================================================
-
-    /**
-     * @brief Translate a string using toolbar's context
-     * @param text Text to translate
-     * @return Translated string
-     */
-    virtual QString translate(const QString& text) = 0;
+    /** @brief Cast to AC_Separator (returns nullptr for toolbars) */
+    inline const AC_Separator* toSeparator() const { return toSeparator_v1(); }
 };
 
 /**
@@ -699,8 +692,8 @@ public:
 /**
  * @brief Concrete implementation of AC_Toolbar
  *
- * AC_ToolbarImpl inherits from QToolBar and implements AC_Toolbar, AC_Container,
- * and AC_Help interfaces. It provides full toolbar functionality including:
+ * AC_ToolbarImpl inherits from QToolBar and implements AC_Toolbar functionality.
+ * It provides full toolbar functionality including:
  * - Dynamic item management
  * - Customization support
  * - Configuration persistence
@@ -708,12 +701,12 @@ public:
  *
  * sizeof(AC_ToolbarImpl) = 0x118 (280 bytes) on x64
  *
- * Memory layout:
- * - +0x00: QToolBar (vptr for QObject at +0x00, QPaintDevice at +0x10)
- * - +0x28: AC_ContainerImpl m_container (88 bytes, ends at +0x80)
- * - +0x80: AC_Toolbar vptr (main toolbar interface)
- * - +0x88: AC_Container vptr
- * - +0x90: AC_Help vptr
+ * Memory layout (from constructor analysis at 0x180032df0):
+ * - +0x00: QToolBar base (QObject vptr)
+ * - +0x10: QPaintDevice vptr
+ * - +0x28: AC_ContainerImpl embedded (has its own vptr at 0x180054eb0)
+ * - +0x80: AC_Toolbar interface vptr (0x180054ef8) <- AC_Toolbar* points here
+ * - +0x88: AC_Help vptr (0x1800550f8)
  * - +0x98: QString m_responderIdentity (24 bytes)
  * - +0xB0: std::vector<AC_Object*> m_defaultConfig (24 bytes)
  * - +0xC8: bool m_isCustomizable
@@ -721,15 +714,15 @@ public:
  * - +0xD8: void* m_unknown1
  * - +0xE0: QObject* m_owner
  * - +0xE8: QWeakPointer<QWidget> m_mainWindow (16 bytes)
- * - +0xF8: float m_scaleFactor (default 1.0)
+ * - +0xF8: float m_scaleFactor (default 1.0f = 0x3F800000)
  * - +0x100: QString m_translationContext (24 bytes)
  *
- * Vtable addresses:
- * - QObject vtable:     0x180054c90
- * - QPaintDevice vtable: 0x180054e70
- * - AC_Toolbar vtable:  0x180054eb0
- * - AC_Container vtable: 0x180054ef8
- * - AC_Help vtable:     0x1800550f8
+ * Vtable addresses (from constructor):
+ * - QObject vtable:        0x180054c90 (at offset +0x00)
+ * - QPaintDevice vtable:   0x180054e70 (at offset +0x10)
+ * - AC_ContainerImpl vptr: 0x180054eb0 (at offset +0x28, internal use)
+ * - AC_Toolbar vtable:     0x180054ef8 (at offset +0x80, returned by createToolbar)
+ * - AC_Help vtable:        0x1800550f8 (at offset +0x88)
  *
  * Signals:
  * - customized(QString) - emitted when toolbar is customized
@@ -754,11 +747,11 @@ public:
     virtual ~AC_ToolbarImpl() override;
 
     // =========================================================================
-    // AC_Object interface
+    // AC_Object interface (note: setVisible overrides QWidget::setVisible)
     // =========================================================================
     const QString& identity() const;
     bool isVisible() const;
-    void setVisible(bool visible);
+    void setVisible(bool visible) override;  // Overrides QWidget::setVisible
     bool isEnabled() const;
     void setEnabled(bool enabled);
     const AC_Item* toItem() const { return nullptr; }
@@ -919,18 +912,20 @@ public:
 // Offset Constants (for reference/debugging)
 // ============================================================================
 namespace AC_ToolbarImpl_Offsets {
-    // Offsets from QToolBar base
-    constexpr size_t ContainerImpl        = 0x28;   // 40 - AC_ContainerImpl embedded
-    constexpr size_t ToolbarVtable        = 0x80;   // 128 - AC_Toolbar vptr
-    constexpr size_t ContainerVtable      = 0x88;   // 136 - AC_Container vptr
-    constexpr size_t HelpVtable           = 0x90;   // 144 - AC_Help vptr
+    // Offsets from QToolBar base (verified from constructor at 0x180032df0)
+    constexpr size_t QObjectVtable        = 0x00;   // 0 - QObject vptr
+    constexpr size_t QPaintDeviceVtable   = 0x10;   // 16 - QPaintDevice vptr
+    constexpr size_t ContainerImpl        = 0x28;   // 40 - AC_ContainerImpl embedded (internal vptr)
+    constexpr size_t ToolbarVtable        = 0x80;   // 128 - AC_Toolbar interface vptr (returned by createToolbar)
+    constexpr size_t HelpVtable           = 0x88;   // 136 - AC_Help vptr
     constexpr size_t ResponderIdentity    = 0x98;   // 152 - QString
     constexpr size_t DefaultConfigVector  = 0xB0;   // 176 - std::vector<AC_Object*>
     constexpr size_t IsCustomizable       = 0xC8;   // 200 - bool
     constexpr size_t CustomizeButton      = 0xD0;   // 208 - void*
+    constexpr size_t Unknown1             = 0xD8;   // 216 - void*
     constexpr size_t Owner                = 0xE0;   // 224 - QObject*
     constexpr size_t MainWindowWeakPtr    = 0xE8;   // 232 - QWeakPointer<QWidget>
-    constexpr size_t ScaleFactor          = 0xF8;   // 248 - float (default 1.0)
+    constexpr size_t ScaleFactor          = 0xF8;   // 248 - float (default 1.0f)
     constexpr size_t TranslationContext   = 0x100;  // 256 - QString
 }
 
