@@ -818,16 +818,20 @@ protected:
 
 private:
   // Member layout (x64):
-  // vptr at +0x00
+  // Total size must be exactly 0x88 (136) bytes for correct multiple inheritance offsets!
+  // vptr at +0x00 (8 bytes, implicit)
   TULayout *m_currentLayout;                // +0x08
   TULayout *m_previousLayout;               // +0x10
-  std::vector<TULayout *> m_layouts;        // +0x18 (24 bytes)
-  std::vector<TULayout *> m_toolbarLayouts; // +0x30 (24 bytes)
-  QString m_layoutPath;                     // +0x50 (24 bytes)
+  std::vector<TULayout *> m_layouts;        // +0x18 (24 bytes, ends at +0x30)
+  std::vector<TULayout *> m_toolbarLayouts; // +0x30 (24 bytes, ends at +0x48)
+  void *_padding1;                          // +0x48 (8 bytes padding)
+  QString m_layoutPath;                     // +0x50 (24 bytes, ends at +0x68)
   std::map<QString, ToolbarButtonConfig> *m_globalToolbarConfig; // +0x68
   void *_reserved;                                               // +0x70
   std::map<QString, ToolbarButtonConfig> *m_viewToolbarConfig;   // +0x78
   int m_flags;                                                   // +0x80
+  int _padding2;                                                 // +0x84 (4 bytes padding for alignment)
+  // Total size: 0x88 (136 bytes)
 };
 
 /**
