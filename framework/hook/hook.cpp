@@ -1,4 +1,4 @@
-#include "../include/hooks/toon_boom_hooks.hpp"
+#include "../include/public/hooks/toon_boom_hooks.hpp"
 #include "../include/internal/harmony_signatures.hpp"
 #include <iostream>
 #include <vector>
