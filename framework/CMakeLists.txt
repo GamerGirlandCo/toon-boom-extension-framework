@@ -29,9 +29,7 @@ function(link_libs_and_set_properties target_name)
 	target_include_directories(${target_name} PUBLIC "${QT6_ROOT_DIR}/include")
 	target_include_directories(${target_name} PUBLIC "${QT6_ROOT_DIR}/include/QtGui")
 
-	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/toon_boom")
-	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/framework")
-	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/hooks")
+	target_include_directories(${target_name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/public")
 	target_include_directories(${target_name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/internal")
 
 	target_link_directories(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib")
