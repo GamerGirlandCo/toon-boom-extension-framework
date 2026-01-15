@@ -61,13 +61,16 @@ public:
 protected:
   QPointer<T> m_widget;
   QWidget *m_parentConnected; // Track which parent we've connected to
+  virtual void onParentDisconnect() {}
+  virtual void afterWidgetCreated() {}
+
   void ensureWidget() {
     if (!m_widget) {
       m_widget = createWidget();
-      m_widget->setAttribute(Qt::WA_DeleteOnClose, false);
-      m_widget->setAttribute(Qt::WA_QuitOnClose, false);
+      afterWidgetCreated();
     }
   }
+
   // Connect to the widget's current parent to unparent before deletion
   // This prevents cross-DLL heap corruption when Qt tries to delete our widget
   void connectToParentIfNeeded() {
