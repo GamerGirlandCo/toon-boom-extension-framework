@@ -83,14 +83,24 @@ Total size: **0x158 (344 bytes)** on x64
 #### Responder Management
 - `firstResponder()` - Returns top of responder stack (offset +248)
 - `applicationResponder()` - Returns m_applicationResponder (offset +296)
-- `registerResponder(responder, widget)` - Adds responder to registry
+- `registerResponder(responder, widget)` - Adds responder to registry; if `widget != nullptr`, inserts into a global widget map and calls `QObject::connect(widget, destroyed(QObject*), ...)` (see `docs/AC_Manager_registerResponder_QBitArrayCrash.md:1`)
 - `setFirstResponder(responder)` - Sets active first responder
-- `pushUp(responder)` / `pushOut(responder)` - Stack manipulation
+- `pushUp(responder)` - Stack manipulation (note: `pushOut` exists on the `AC_ManagerImpl` QObject vtable in this build, but is not part of the `AC_Manager*` vtable at `0x18004e7c8`)
 
 #### Menu/Toolbar Creation
 - `createMenuBar(element, parent)` - Create menu from XML
 - `createToolbar(element, ids, mainWindow, area, name, owner)` - Create toolbar
 - `loadMenus(path)` / `loadToolbars(path, ids)` - Load from file
+
+#### AC_Manager Toolbar Vtable Slots (Verified in IDA)
+- `loadToolbars(const QDomElement&, QList<QString>&)` - slot 46 (`+0x170`) at `0x180015940`
+- `loadToolbars(const QString&, QList<QString>&)` - slot 47 (`+0x178`) at `0x180015f20` (parses file then forwards to slot 46)
+- `toolbarElement(const QString&)` - slot 52 (`+0x1a0`) at `0x180016240` (returns `QDomElement` by value via MSVC x64 hidden sret out buffer)
+- `updateToolbars()` - slot 53 (`+0x1a8`) at `0x180016350` (schedules `fireUpdateToolbars()` via `QTimer::singleShot(300, ...)`)
+
+Note: `loadToolbars(...)` does not call `updateToolbars()` directly (verified by decompilation of `0x180015940` / `0x180015f20`).
+
+Framework ABI note: `AC_Manager` is a vtable interface; `loadToolbars(const QDomElement&, ...)` must be declared before `loadToolbars(const QString&, ...)` to match slots 46/47. If your call appears to hit `updateToolbars()` or the wrong `loadToolbars` overload, suspect an ABI mismatch (wrong virtual order and/or wrong base pointer/vptr).
 
 #### Action Triggering
 - `trigger(responderIdentity, actionName, forEach)` - Execute action
@@ -204,8 +214,8 @@ Total size: **0x58 (88 bytes)** on x64
 ### AC_Result
 ```cpp
 enum class AC_Result : int {
-    NotHandled = 0,  // Action not handled by any responder
-    Handled = 1,     // Action handled successfully
+    Handled = 0,     // Action handled successfully
+    NotHandled = 1,  // Action not handled by any responder
     Error = 2        // Error during handling
 };
 ```
