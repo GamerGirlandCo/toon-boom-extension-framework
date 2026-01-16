@@ -17,6 +17,8 @@ if(NOT DEFINED QT6_ROOT_DIR)
   message(FATAL_ERROR "QT6_ROOT_DIR is not defined. Please set the QT6_ROOT_DIR variable to the root directory of the Qt 6 installation.")
 endif()
 
+option(TOON_BOOM_EXTENSION_FRAMEWORK_DEBUG "Enable debug output" ON)
+
 include(${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_PREFIX_PATH ${QT6_ROOT_DIR})
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
