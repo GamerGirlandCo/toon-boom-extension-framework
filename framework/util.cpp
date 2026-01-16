@@ -1,5 +1,6 @@
 #include "include/public/toon_boom/ext/util.hpp"
 
+namespace util::debug {
 std::string addrToHex(void* addr) {
   return std::format("0x{:010X}", reinterpret_cast<uintptr_t>(addr));
 }
@@ -7,3 +8,4 @@ std::string addrToHex(void* addr) {
 std::string constAddrToHex(const void* addr) {
   return std::format("0x{:010X}", reinterpret_cast<const uintptr_t>(addr));
 }
+} // namespace util::debug

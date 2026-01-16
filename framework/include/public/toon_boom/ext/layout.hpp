@@ -1,6 +1,7 @@
 #pragma once
 #include "../PLUG_Services.hpp"
 #include "../toon_boom_layout.hpp"
+#include "./util.hpp"
 #include "QtXml/qdom.h"
 #include <QtCore/QObject>
 #include <QtCore/QPointer>
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <type_traits>
 
+using namespace util;
 template <typename T>
 concept isQWidget = std::is_base_of<QWidget, T>::value;
 
@@ -100,7 +102,7 @@ protected:
     QObject::connect(
         parent, &QObject::destroyed, m_widget.data(),
         [this]() {
-          std::cout << "[parent destroyed] Unparenting widget to prevent "
+          debug::out << "[parent destroyed] Unparenting widget to prevent "
                        "cross-DLL heap deletion"
                     << std::endl;
           if (m_widget) {
@@ -123,10 +125,10 @@ protected:
     if (am) {
       QList<QString> ids;
       am->loadToolbars(element, ids);
-      std::cout << "Registered toolbar with AC_Manager. IDs loaded: "
+      debug::out << "Registered toolbar with AC_Manager. IDs loaded: "
                 << ids.size() << std::endl;
       for (const auto &id : ids) {
-        std::cout << "  - " << id.toStdString() << std::endl;
+        debug::out << "  - " << id.toStdString() << std::endl;
       }
     } else {
       std::cerr << "Could not get AC_Manager!" << std::endl;
