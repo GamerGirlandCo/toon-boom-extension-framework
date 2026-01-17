@@ -19,7 +19,7 @@ endif()
 
 option(TOON_BOOM_EXTENSION_FRAMEWORK_DEBUG "Enable debug output" ON)
 
-include(${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
+# include(${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_PREFIX_PATH ${QT6_ROOT_DIR})
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -33,5 +33,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Core5Compat Xml QUIET)
+
 add_subdirectory(framework)
 add_subdirectory(injector)
