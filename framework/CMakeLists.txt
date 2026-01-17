@@ -1,3 +1,14 @@
+include(FetchContent)
+
+FetchContent_Declare(
+	minhook
+	GIT_REPOSITORY https://github.com/TsudaKageyu/minhook.git
+	GIT_TAG master
+	FIND_PACKAGE_ARGS NAMES minhook
+)
+FetchContent_MakeAvailable(minhook)
+
+
 file(GLOB_RECURSE FRAMEWORK_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
@@ -17,7 +28,7 @@ file(GLOB_RECURSE FRAMEWORK_HEADERS CONFIGURE_DEPENDS
 list(FILTER FRAMEWORK_SOURCES EXCLUDE REGEX "/(out|build|cmake-build-|CMakeFiles)/")
 
 file(COPY "${QT5_ROOT_DIR}/include/QtScript" DESTINATION ${CMAKE_BINARY_DIR}/include)
-find_package(minhook CONFIG REQUIRED)
+# find_package(minhook CONFIG REQUIRED)
 function(link_libs_and_set_properties target_name)
 	if(TOON_BOOM_EXTENSION_FRAMEWORK_DEBUG)
 		target_compile_definitions(${target_name} PUBLIC TB_EXT_FRAMEWORK_DEBUG=1)
@@ -42,7 +53,7 @@ function(link_libs_and_set_properties target_name)
   target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Core5Compat.lib")
   target_link_libraries(${target_name} PUBLIC "${QT6_ROOT_DIR}/lib/Qt6Xml.lib")
 	target_compile_options(${target_name} PUBLIC "/EHsc")
-	target_link_libraries(${target_name} PUBLIC minhook::minhook)
+	target_link_libraries(${target_name} PUBLIC minhook)
   set_target_properties(${target_name} PROPERTIES
     AUTOMOC ON
     AUTOUIC ON
