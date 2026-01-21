@@ -20,8 +20,20 @@ argparse::ArgumentParser *&createProgram(int argc, char *argv[]) {
   program->add_argument("-i", "--dep")
       .help("path to an additional dll to copy into program's install dir")
       .default_value<std::vector<std::string>>({})
+      .append(); 
+  program->add_argument("-I", "--dep-dir")
+      .help("path to a directory of dependencies to copy into program's "
+            "install dir")
+      .default_value(std::vector<std::string>({}))
       .append();
+  program->add_argument("-D", "--dll-dir")
+  .help("path to a directory of dlls to inject")
+  .default_value<std::vector<std::string>>({})
+  .append();
   program->add_argument("-d", "--dll").append().help("path to a dll to inject");
+  program->add_argument("-s", "--sleep")
+      .help("sleep for the given number of milliseconds before starting the program")
+      .default_value("500").nargs(0, 1);
 
   return program;
 }
@@ -68,7 +80,7 @@ int main(int argc, char *argv[]) {
 
   if (args->get<std::string>("-v") != "") {
     logFile = args->get<std::string>("-v");
-    if(logFile != "-") {
+    if (logFile != "-") {
       logFile = std::filesystem::absolute(logFile).string();
     }
     std::cout << "Logging to " << (logFile == "-" ? "console" : logFile)
@@ -117,6 +129,19 @@ int main(int argc, char *argv[]) {
   for (auto dllPath : dllDeps) {
     copyDll(dllPath, entry, isDebug, true);
   }
+  auto depDirs = args->get<std::vector<std::string>>("-D");
+  {
+    std::set<std::string> copiedDlls;
+    copiedDlls.insert(dllPaths.begin(), dllPaths.end());
+    for (auto depDir : depDirs) {
+      for (auto &entry : std::filesystem::directory_iterator(
+               std::filesystem::absolute(depDir))) {
+        if (entry.is_regular_file() && entry.path().extension() == ".dll" && !copiedDlls.contains(entry.path().string())) {
+          copyDll(entry.path().string(), entry, isDebug, true);
+        }
+      }
+    }
+  }
 
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
@@ -129,11 +154,20 @@ int main(int argc, char *argv[]) {
   sattr.bInheritHandle = TRUE;
   si.cb = sizeof(si);
   si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-  HANDLE outHandle =
-      logFile == "-"
-          ? GetStdHandle(STD_OUTPUT_HANDLE)
-          : CreateFile(logFile.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
-                        &sattr, OPEN_ALWAYS | TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  DWORD outHandeFlags = 0;
+  if(logFile != "-") {
+    if(std::filesystem::exists(logFile)) {
+      outHandeFlags = OPEN_ALWAYS | TRUNCATE_EXISTING;
+    } else {
+      outHandeFlags = CREATE_ALWAYS;
+    }
+  }
+  HANDLE outHandle = logFile == "-"
+                         ? GetStdHandle(STD_OUTPUT_HANDLE)
+                         : CreateFile(logFile.c_str(), GENERIC_WRITE,
+                                      FILE_SHARE_WRITE | FILE_SHARE_READ,
+                                      &sattr, outHandeFlags,
+                                      FILE_ATTRIBUTE_NORMAL, NULL);
   if (outHandle == INVALID_HANDLE_VALUE) {
     std::cerr << "Failed to create output handle" << std::endl;
     std::cerr << "Error: " << GetLastError() << std::endl;
@@ -151,6 +185,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   std::cout << "Target process ID: " << pi.dwProcessId << std::endl;
+  try {
+    std::string strSleep = args->get("-s");
+    Sleep(std::stoi(strSleep));
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
 
   HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
