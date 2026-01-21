@@ -1,6 +1,24 @@
+If:
+  PathMatch:
+  - .*/example/.*
 CompileFlags:
   BuiltinHeaders: QueryDriver
-  CompilationDatabase: .
+  CompilationDatabase: ./example/build/ninja/compile_commands.json
+  Add:
+  - '/wd4244'
+  - '/wd4267'
+  - '/wd4838'
+  - '/wd4430'
+  Remove:
+  - 'external:I*'
+  - 'external:W*'
+---
+If:
+  PathExclude:
+  - .*/example/.* 
+CompileFlags:
+  BuiltinHeaders: QueryDriver
+  CompilationDatabase: ./build/ninja/compile_commands.json
   Remove:
   - 'external:I*'
   - 'external:W*'

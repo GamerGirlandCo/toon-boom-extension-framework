@@ -1,0 +1,39 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": {
+		"major": 4,
+		"minor": 2,
+		"patch": 0
+	},
+	"configurePresets": [	
+		{
+			"name": "ninja",
+			"displayName": "Ninja",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build/ninja",
+			"toolchainFile": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"environment": {
+				"VCPKG_VISUAL_STUDIO_PATH": "C:/Program Files/Microsoft Visual Studio/18/Community",
+				"VCPKG_ROOT": "C:/vcpkg",
+				"CMAKE_GENERATOR_PLATFORM": "x64"
+			},
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+				"CMAKE_CXX_COMPILER": "cl.exe",
+				"CMAKE_MAKE_PROGRAM": "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "ninja-debug",
+			"configurePreset": "ninja",
+			"configuration": "RelWithDebInfo"
+		},
+		{
+			"name": "ninja-release",
+			"configurePreset": "ninja",
+			"configuration": "Release"
+		}
+	]	
+}
