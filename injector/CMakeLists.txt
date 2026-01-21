@@ -18,8 +18,13 @@ file(GLOB_RECURSE INJECTOR_HEADERS CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 )
 
+
 list(FILTER INJECTOR_SOURCES EXCLUDE REGEX "/(out|build|cmake-build-|CMakeFiles)/")
 list(REMOVE_ITEM INJECTOR_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+
+if("${INJECTOR_SOURCES}" STREQUAL "")
+  list(APPEND INJECTOR_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/finder.cpp")
+endif()
 
 add_library(libtoonboom_injector STATIC ${INJECTOR_SOURCES} ${INJECTOR_HEADERS})
 target_compile_features(libtoonboom_injector PRIVATE cxx_std_20)
