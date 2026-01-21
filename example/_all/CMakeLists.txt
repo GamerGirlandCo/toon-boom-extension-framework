@@ -21,4 +21,5 @@ set_target_properties(all-examples PROPERTIES
     AUTORCC ON
   )
 target_link_libraries(all-examples PUBLIC libtoonboom_static)
+target_link_libraries(all-examples PRIVATE doom-example)
 target_link_libraries(all-examples PRIVATE simple-example)

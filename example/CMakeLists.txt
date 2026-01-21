@@ -36,4 +36,5 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Core5Compat Xml QUIET)
 
 add_subdirectory(simple)
+add_subdirectory(ultimate-artblock)
 add_subdirectory(_all)

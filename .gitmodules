@@ -1,0 +1,4 @@
+[submodule "example/ultimate-artblock/3rdparty/libdoom"]
+	path = example/ultimate-artblock/3rdparty/libdoom
+	url = https://git.tablet.sh/tablet/libdoom
+	branch = master

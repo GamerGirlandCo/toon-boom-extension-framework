@@ -7,12 +7,14 @@
 #include <vector>
 #include "./defs/base.hpp"
 #include "./defs/simple.hpp"
+#include "./defs/doom.hpp"
 
 class ToonBoomExamples {
 public:
   ToonBoomExamples() {
     addExample(new SimpleExample());
     addExample(new ToolbarExample());
+    addExample(new DoomExample());
   }
   void addExample(BaseExample *example) { examples.push_back(example); }
   QScriptValue getExamples(QScriptEngine *engine) {
